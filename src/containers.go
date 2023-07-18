@@ -2,29 +2,57 @@ package main
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"io"
-	"log"
+	"io/ioutil"
 	"os"
 
 	"github.com/docker/docker/api/types"
 	"github.com/docker/docker/api/types/container"
+	"github.com/docker/docker/api/types/network"
 	"github.com/docker/docker/client"
-	"github.com/docker/docker/pkg/archive"
+	v1 "github.com/opencontainers/image-spec/specs-go/v1"
 )
 
 type ContainerRunner struct {
-	Image        string
-	BuildContext string
-	Context      context.Context
-	Client       *client.Client
+	Image         string                      // image for a container
+	BuildContext  string                      // build context (a path) for dockerfile
+	BuildMode     bool                        // build mode (if set to true -> container builds from Dockerfile)
+	ContainerName string                      // container name
+	Context       context.Context             // context (needed for Docker API functions) from "context" package
+	Client        *client.Client              // docker client
+	Config        container.Config            // configuration scheme for docker container
+	HostConf      container.HostConfig        // docker host config
+	NetConf       network.NetworkingConfig    // networking config for container
+	Platform      v1.Platform                 // platform
+	PullOpts      types.ImagePullOptions      // pull options (applies for BuildMode: false)
+	StartOpts     types.ContainerStartOptions // start options
 }
 
-func NewContainerRunner(img string, ctx context.Context, cli *client.Client) *ContainerRunner {
+func NewContainerRunner(img string,
+	bc string,
+	bm bool,
+	cn string,
+	conf container.Config,
+	hostconf container.HostConfig,
+	netconf network.NetworkingConfig,
+	platform v1.Platform,
+	pullopts types.ImagePullOptions,
+	startopts types.ContainerStartOptions) *ContainerRunner {
 	return &ContainerRunner{
-		Image:   img,
-		Context: ctx,
-		Client:  cli,
+		Image:         img,
+		BuildContext:  bc,
+		BuildMode:     bm,
+		ContainerName: cn,
+		Context:       context.Background(),
+		Client:        &client.Client{},
+		Config:        conf,
+		HostConf:      hostconf,
+		NetConf:       netconf,
+		Platform:      platform,
+		PullOpts:      pullopts,  //types.ImagePullOptions{},
+		StartOpts:     startopts, //&types.ContainerStartOptions{},
 	}
 }
 
@@ -40,9 +68,9 @@ func (r *ContainerRunner) InitializeClient() error {
 	return nil
 }
 
-func (r *ContainerRunner) PullDockerImage(pullopts types.ImagePullOptions) (io.ReadCloser, error) {
+func (r *ContainerRunner) PullDockerImage() (io.ReadCloser, error) {
 
-	out, err := r.Client.ImagePull(r.Context, r.Image, pullopts)
+	out, err := r.Client.ImagePull(r.Context, r.Image, r.PullOpts)
 	if err != nil {
 		fmt.Println("pull errors?")
 		panic(err)
@@ -62,72 +90,84 @@ func (r *ContainerRunner) PullDockerImage(pullopts types.ImagePullOptions) (io.R
 // 	SuppressOutput: false,
 // }
 
-// r.BuildContainer(buildopts)
-
-// Function for building containers
-func (r *ContainerRunner) BuildContainer(bopts types.ImageBuildOptions) error {
-	imageBuildResponse, err := r.Client.ImageBuild(context.Background(), getBuildContext("./nginx/"), bopts)
-
+func ExtractImageID(buildResponse types.ImageBuildResponse) (string, error) {
+	// Read the build response as JSON
+	buildResponseBytes, err := ioutil.ReadAll(buildResponse.Body)
 	if err != nil {
-		log.Fatal(err)
-		return err
-	}
-	defer imageBuildResponse.Body.Close()
-	_, err = io.Copy(os.Stdout, imageBuildResponse.Body)
-	if err != nil {
-		log.Fatal(err)
-		return err
+		return "", err
 	}
 
-	return nil
+	// Search for the "aux" field in the JSON response
+	var buildAux struct {
+		ID string `json:"ID"`
+	}
+	err = json.Unmarshal(buildResponseBytes, &buildAux)
+	if err != nil {
+		return "", err
+	}
+
+	return buildAux.ID, nil
 }
 
-func (r *ContainerRunner) CreateContainer(config *container.Config) (container.CreateResponse, error) {
-	return r.Client.ContainerCreate(r.Context, config, nil, nil, nil, "")
+func (r *ContainerRunner) CreateContainer() (container.CreateResponse, error) {
+	return r.Client.ContainerCreate(
+		r.Context,
+		&r.Config,
+		&r.HostConf,
+		&r.NetConf,
+		&r.Platform,
+		r.ContainerName)
 }
 
-func (r *ContainerRunner) StartContainer(resp container.CreateResponse, startopts *types.ContainerStartOptions) error {
-	return r.Client.ContainerStart(r.Context, resp.ID, *startopts)
+func (r *ContainerRunner) StartContainer(resp container.CreateResponse) error {
+	return r.Client.ContainerStart(r.Context, resp.ID, r.StartOpts)
 }
 
 func (r *ContainerRunner) Containerize() {
-	pullopts := types.ImagePullOptions{}
-
-	//r := NewContainerRunner("nginx", context.Background(), &client.Client{})
-
-	containerConfig := &container.Config{
-		Image: r.Image,
-	}
 
 	if err := r.InitializeClient(); err != nil {
 		fmt.Println("init client error")
 		panic(err)
 	}
+	fmt.Println("initialized client")
 
-	out, err := r.PullDockerImage(pullopts)
+	out, err := r.PullDockerImage()
 	if err != nil {
 		fmt.Println(out)
 		fmt.Println("Pull error")
 		panic(err)
 	}
 
-	startopts := &types.ContainerStartOptions{}
-
-	resp, err := r.CreateContainer(containerConfig)
-	if err := r.StartContainer(resp, startopts); err != nil {
-		fmt.Println("start container error")
+	resp, err := r.CreateContainer()
+	if err != nil {
 		panic(err)
 	}
 
+	if err := r.StartContainer(resp); err != nil {
+		fmt.Println("start container error")
+		panic(err)
+	}
 	fmt.Println("ID of created container: ", resp.ID)
 
 }
 
-func getBuildContext(path string) io.Reader {
-	// Create a tar archive of the Docker build context
-	buildContext, err := archive.TarWithOptions(path, &archive.TarOptions{})
-	if err != nil {
-		log.Fatal(err)
+func (r *ContainerRunner) StopContainer() {
+	if err := r.InitializeClient(); err != nil {
+		fmt.Println("Error initializing client")
+		panic(err)
 	}
-	return buildContext
+
+	containers, err := r.Client.ContainerList(r.Context, types.ContainerListOptions{})
+	if err != nil {
+		panic(err)
+	}
+
+	for _, cont := range containers {
+		fmt.Println("Stopping container")
+		noWaitTimeout := 0
+		if err := r.Client.ContainerStop(r.Context, cont.ID, container.StopOptions{Timeout: &noWaitTimeout}); err != nil {
+			panic(err)
+		}
+		fmt.Println("Success stopping container ", cont.ID)
+	}
 }

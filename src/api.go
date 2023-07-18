@@ -13,11 +13,11 @@ type APIServer struct {
 	Runner     *ContainerRunner
 }
 
-func NewAPIServer(lp string, r *ContainerRunner) (*APIServer, error) {
+func NewAPIServer(lp string, r *ContainerRunner) *APIServer {
 	return &APIServer{
 		ListenPort: lp,
 		Runner:     r,
-	}, nil
+	}
 }
 
 func (s *APIServer) Run() {
@@ -26,13 +26,14 @@ func (s *APIServer) Run() {
 	r.HandleFunc("/start", s.Start).Methods("POST")
 
 	fmt.Printf("Server listening on port %v\n", s.ListenPort)
-	http.ListenAndServe(s.ListenPort, r)
-
+	if err := http.ListenAndServe(s.ListenPort, r); err != nil {
+		panic(err)
+	}
 }
 
 func (s *APIServer) Stop(w http.ResponseWriter, r *http.Request) {
-	fmt.Println("not implemented")
-
+	s.Runner.StopContainer()
+	WriteJSON(w, http.StatusOK, nil)
 }
 
 func (s *APIServer) Start(w http.ResponseWriter, r *http.Request) {

@@ -1,22 +1,59 @@
 package main
 
 import (
-	"context"
 	"fmt"
+	"os"
 
-	"github.com/docker/docker/client"
+	"github.com/docker/docker/api/types"
+	"github.com/docker/docker/api/types/container"
+	"github.com/docker/docker/api/types/network"
+	"github.com/docker/go-connections/nat"
+	v1 "github.com/opencontainers/image-spec/specs-go/v1"
 )
 
 func main() {
-
-	runner := NewContainerRunner("nginx", context.Background(), &client.Client{})
-	listenPort := ":7777"
-
-	server, err := NewAPIServer(listenPort, runner)
+	bindPath, err := os.Getwd()
 	if err != nil {
-		fmt.Println("server error")
 		panic(err)
 	}
+	img := "itzg/minecraft-server"
+	bc := "./"
+	bm := true
+	cn := "bebok"
+	conf := container.Config{
+		Hostname:     "minecraft",
+		Image:        img,
+		ExposedPorts: nat.PortSet{"25565/tcp": struct{}{}},
+		Env:          []string{"EULA=TRUE"},
+	}
+	hostconf := container.HostConfig{
+		Resources: container.Resources{
+			Memory: 2147483648,
+		},
+		Binds: []string{
+			fmt.Sprintf("%v/mcdata:/data", bindPath),
+		},
+	}
+	netconf := network.NetworkingConfig{}
+	platform := v1.Platform{}
+	pullopts := types.ImagePullOptions{}
+	startopts := types.ContainerStartOptions{}
+
+	runner := NewContainerRunner(
+		img,
+		bc,
+		bm,
+		cn,
+		conf,
+		hostconf,
+		netconf,
+		platform,
+		pullopts,
+		startopts)
+
+	listenPort := ":7777"
+
+	server := NewAPIServer(listenPort, runner)
 
 	server.Run()
 }
