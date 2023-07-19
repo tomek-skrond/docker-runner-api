@@ -31,10 +31,10 @@ go build -o runner && ./runner
 	r.HandleFunc("/logs", s.Logs)
 ```
 
-Endpoint `/` is the homepage.
+- Endpoint `/` is the homepage.
 
-Endpoint `/start` runs the container with a server.
+- Endpoint `/start` runs the container with a server.
 
-Endpoint `/stop` stops the container.
+- Endpoint `/stop` stops the container.
 
-Endpoint `/logs` is an endpoint for reading logs.
+- Endpoint `/logs` is an endpoint for reading logs.
