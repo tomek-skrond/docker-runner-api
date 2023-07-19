@@ -38,3 +38,12 @@ go build -o runner && ./runner
 - Endpoint `/stop` stops the container.
 
 - Endpoint `/logs` is an endpoint for reading logs.
+
+### Dependencies
+
+To use this application, you have to install Go on your machine:
+
+```
+$ go version
+go version go1.20.5 linux/amd64
+```
