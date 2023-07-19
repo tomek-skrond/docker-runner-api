@@ -42,7 +42,10 @@ func (s *APIServer) Logs(w http.ResponseWriter, r *http.Request) {
 	path := os.Getenv("TEMPLATE_PATH")
 	logsPath := os.Getenv("LOGS_PATH")
 
-	logs := GetMcServerLogs(logsPath)
+	logs, error := GetMcServerLogs(logsPath)
+	if error != nil {
+		fmt.Println(error)
+	}
 
 	t, err := template.ParseFiles(path + "logs.html")
 	if err != nil {
@@ -61,11 +64,12 @@ func (s *APIServer) Home(w http.ResponseWriter, r *http.Request) {
 		panic(err)
 	}
 
-	fmt.Println(t.Execute(w, "logs some day"))
+	t.Execute(w, "logs some day")
+	fmt.Println("Home page accessed")
 }
 func (s *APIServer) Stop(w http.ResponseWriter, r *http.Request) {
 	s.Runner.StopContainer()
-	WriteJSON(w, http.StatusOK, nil)
+	WriteJSON(w, http.StatusOK, "Stop container accessed")
 }
 
 func (s *APIServer) Start(w http.ResponseWriter, r *http.Request) {
