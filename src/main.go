@@ -33,11 +33,16 @@ func main() {
 		Binds: []string{
 			fmt.Sprintf("%v/mcdata:/data", bindPath),
 		},
+		AutoRemove: true,
 	}
 	netconf := network.NetworkingConfig{}
 	platform := v1.Platform{}
 	pullopts := types.ImagePullOptions{}
 	startopts := types.ContainerStartOptions{}
+
+	if hostconf.AutoRemove != true {
+		hostconf.AutoRemove = true
+	}
 
 	runner := NewContainerRunner(
 		img,

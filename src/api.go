@@ -2,7 +2,9 @@ package main
 
 import (
 	"fmt"
+	"html/template"
 	"net/http"
+	"os"
 	"time"
 
 	"github.com/gorilla/mux"
@@ -24,6 +26,11 @@ func (s *APIServer) Run() {
 	r := mux.NewRouter()
 	r.HandleFunc("/stop", s.Stop).Methods("POST")
 	r.HandleFunc("/start", s.Start).Methods("POST")
+	r.HandleFunc("/", s.Home).Methods("GET")
+
+	r.HandleFunc("/logs", s.Logs)
+
+	http.Handle("/styles/", http.StripPrefix("/styles/", http.FileServer(http.Dir("./templates/styles/"))))
 
 	fmt.Printf("Server listening on port %v\n", s.ListenPort)
 	if err := http.ListenAndServe(s.ListenPort, r); err != nil {
@@ -31,6 +38,31 @@ func (s *APIServer) Run() {
 	}
 }
 
+func (s *APIServer) Logs(w http.ResponseWriter, r *http.Request) {
+	path := os.Getenv("TEMPLATE_PATH")
+	logsPath := os.Getenv("LOGS_PATH")
+
+	logs := GetMcServerLogs(logsPath)
+
+	t, err := template.ParseFiles(path + "logs.html")
+	if err != nil {
+		fmt.Println("error in logs template")
+		panic(err)
+	}
+
+	fmt.Println(t.Execute(w, logs))
+
+}
+func (s *APIServer) Home(w http.ResponseWriter, r *http.Request) {
+	path := os.Getenv("TEMPLATE_PATH")
+	t, err := template.ParseFiles(path + "home.html")
+	if err != nil {
+		fmt.Println("error in home template")
+		panic(err)
+	}
+
+	fmt.Println(t.Execute(w, "logs some day"))
+}
 func (s *APIServer) Stop(w http.ResponseWriter, r *http.Request) {
 	s.Runner.StopContainer()
 	WriteJSON(w, http.StatusOK, nil)

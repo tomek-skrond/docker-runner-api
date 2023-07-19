@@ -1,0 +1,36 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="stylesheet" type="text/css" href="styles/style.css">
+    <title>Server Management</title>
+</head>
+<body>
+    <iframe name="dummyframe" id="dummyframe" style="display: none;"></iframe>
+
+    <div class="jumbotron jumbotron-fluid">
+        <div class="container">
+          <h1 class="display-4">Server Management</h1>
+          <p class="lead">You can Start/Stop server and view server logs</p>
+          <p class="lead">Server is managed using Go code with Docker container configuration using Docker SDK for Golang</p>
+        </div>
+    </div>
+
+    <form action="/start" method="post" target="dummyframe">
+        <input type="submit" value="Start Server">
+    </form>
+
+    <form action="/stop" method="post" target="dummyframe">
+        <input type="submit" value="Stop Server" class="">
+    </form>
+
+    <form action="/logs" method="get">
+        <input type="submit" value="See Logs" class="">
+    </form>
+
+
+
+</body>
+</html>
