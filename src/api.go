@@ -27,10 +27,7 @@ func (s *APIServer) Run() {
 	r.HandleFunc("/stop", s.Stop).Methods("POST")
 	r.HandleFunc("/start", s.Start).Methods("POST")
 	r.HandleFunc("/", s.Home).Methods("GET")
-
 	r.HandleFunc("/logs", s.Logs)
-
-	http.Handle("/styles/", http.StripPrefix("/styles/", http.FileServer(http.Dir("./templates/styles/"))))
 
 	fmt.Printf("Server listening on port %v\n", s.ListenPort)
 	if err := http.ListenAndServe(s.ListenPort, r); err != nil {
@@ -74,7 +71,7 @@ func (s *APIServer) Stop(w http.ResponseWriter, r *http.Request) {
 
 func (s *APIServer) Start(w http.ResponseWriter, r *http.Request) {
 	s.Runner.Containerize()
-	WriteJSON(w, http.StatusOK, nil)
+	WriteJSON(w, http.StatusOK, "Start container accessed")
 }
 
 func WriteJSON(w http.ResponseWriter, status int, v any) {
