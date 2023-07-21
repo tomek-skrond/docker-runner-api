@@ -2,7 +2,7 @@ BINARY_NAME=runner
 
 
 build:
-	GOARCH=amd64 GOOS=linux /usr/bin/go build -o $(BINARY_NAME) .
+	GOARCH=amd64 GOOS=linux /usr/local/go/bin/go build -o $(BINARY_NAME) .
 
 run: build
 	. ./.env && ./$(BINARY_NAME)
