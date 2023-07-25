@@ -24,7 +24,8 @@ jobs:
     - name: useless
       run: echo $(pwd)
     - name: useless2
-      run: ls -la
+      run: ls -la /usr/local/
+    
     - name: build
       run: go build -v ./src/...
     
