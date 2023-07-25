@@ -10,6 +10,7 @@ import (
 
 	"github.com/docker/docker/api/types"
 	"github.com/docker/docker/api/types/container"
+	"github.com/docker/docker/api/types/filters"
 	"github.com/docker/docker/api/types/network"
 	"github.com/docker/docker/client"
 	v1 "github.com/opencontainers/image-spec/specs-go/v1"
@@ -159,9 +160,24 @@ func (r *ContainerRunner) StopContainer() {
 
 	containername := r.ContainerName
 	noWaitTimeout := 0
-
-	if err := r.Client.ContainerStop(r.Context, containername, container.StopOptions{Timeout: &noWaitTimeout}); err != nil {
+	filters := filters.NewArgs()
+	filters.Add("name", containername)
+	containers, err := r.Client.ContainerList(r.Context, types.ContainerListOptions{Filters: filters})
+	if err != nil {
 		panic(err)
 	}
-	fmt.Println("Success stopping container ", r.ContainerName)
+
+	if len(containers) == 0 {
+		fmt.Println("Container does not exist")
+	}
+
+	if len(containers) == 1 {
+		fmt.Println("container ID found:", containers[0].ID)
+
+		if err := r.Client.ContainerStop(r.Context, containername, container.StopOptions{Timeout: &noWaitTimeout}); err != nil {
+			panic(err)
+		}
+		fmt.Println("Success stopping container ", r.ContainerName)
+	}
+
 }
