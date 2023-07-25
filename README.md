@@ -22,6 +22,13 @@ After exporting envs, you can build and run the application:
 go build -o runner && ./runner
 ```
 
+The best way to run the app is creating an `.env` file and running a task in `Makefile`, that sources environmental vars, builds and runs the code.
+
+```
+make run
+```
+
+
 ### Endpoints
 
 ```
