@@ -22,5 +22,5 @@ jobs:
         go-version: '1.20'
 
     - name: build
-      run: cd /home/runner/work/docker-runner-api/docker-runner-api/ && make build
+      run: cd /home/runner/work/docker-runner-api/docker-runner-api/src/ && make build
     
