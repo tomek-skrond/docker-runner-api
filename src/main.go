@@ -20,18 +20,30 @@ func main() {
 	bc := "./"
 	bm := true
 	cn := "bebok"
+	ports, err := nat.NewPort("tcp", "25565-25565")
+	if err != nil {
+		panic(err)
+	}
 	conf := container.Config{
 		Hostname:     "minecraft",
 		Image:        img,
-		ExposedPorts: nat.PortSet{"25565/tcp": struct{}{}},
+		ExposedPorts: nat.PortSet{ports: struct{}{}},
 		Env:          []string{"EULA=TRUE"},
 	}
 	hostconf := container.HostConfig{
 		Resources: container.Resources{
-			Memory: 2147483648,
+			Memory: 4 * 2147483648,
 		},
 		Binds: []string{
 			fmt.Sprintf("%v/mcdata:/data", bindPath),
+		},
+		PortBindings: nat.PortMap{
+			"25565/tcp": []nat.PortBinding{
+				{
+					HostIP:   "0.0.0.0",
+					HostPort: "9999",
+				},
+			},
 		},
 		AutoRemove: true,
 	}

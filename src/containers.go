@@ -157,17 +157,11 @@ func (r *ContainerRunner) StopContainer() {
 		panic(err)
 	}
 
-	containers, err := r.Client.ContainerList(r.Context, types.ContainerListOptions{})
-	if err != nil {
+	containername := r.ContainerName
+	noWaitTimeout := 0
+
+	if err := r.Client.ContainerStop(r.Context, containername, container.StopOptions{Timeout: &noWaitTimeout}); err != nil {
 		panic(err)
 	}
-
-	for _, cont := range containers {
-		fmt.Println("Stopping container")
-		noWaitTimeout := 0
-		if err := r.Client.ContainerStop(r.Context, cont.ID, container.StopOptions{Timeout: &noWaitTimeout}); err != nil {
-			panic(err)
-		}
-		fmt.Println("Success stopping container ", cont.ID)
-	}
+	fmt.Println("Success stopping container ", r.ContainerName)
 }
