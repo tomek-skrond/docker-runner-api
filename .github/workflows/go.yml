@@ -26,5 +26,5 @@ jobs:
     - name: useless2
       run: ls -la
     - name: build
-      run: cd /home/runner/work/docker-runner-api/docker-runner-api/src/ && go build -v ./...
+      run: go build -v ./src/...
     
