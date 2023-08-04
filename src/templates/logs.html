@@ -1,1 +1,61 @@
-{{.}}
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@4.3.1/dist/css/bootstrap.min.css" integrity="sha384-ggOyR0iXCbMQv3Xipma34MD+dH/1fQ784/j6cY/iJTQUOhcWr7x9JvoRxT2MZw1T" crossorigin="anonymous">
+    <title>View Logs</title>
+    <style>
+        div.scroll {
+          width: 100%;
+          height: 100%;
+          overflow-x: hidden;
+          overflow-y: auto;
+          padding: 20px;
+        }
+        .btn {
+            opacity: 0.4;
+        }
+        .btn.btn-primary:hover{
+            opacity: 1;
+
+        }
+        .btn.btn-secondary:hover{
+            opacity: 1;
+        }
+      </style>
+        <script>
+
+            function scrollToTop(){
+                const element = document.getElementById("scrolls");
+                element.scrollLeft = 0;
+                element.scrollTop = 0;
+            }
+            function scrollToBottom(){
+                const element = document.getElementById("scrolls");
+                element.scrollLeft = 0;
+                element.scrollTop = 10000;
+            }
+
+        </script>
+</head>
+<body>
+
+    <div class="fixed-bottom scroll" id="scrolls">
+        {{range $val := .}}
+            <div style="font-size:small;" class="alert alert-info" role="alert">{{$val}}</div>
+        {{end}}
+    </div>
+
+    <div class="fixed-bottom text-center">
+        <button type="button" class="position-sticky btn btn-primary btn-lg" class="btn" onClick="window.location.reload();">Refresh Page</button>
+        <button onclick="scrollToBottom()" type="button" class="btn btn-secondary btn-lg" class="btn" onClick="window.location.reload();">Scroll Bottom</button>
+        <button onclick="scrollToTop()" type="button" class="btn btn-secondary btn-lg" class="btn" onClick="window.location.reload();">Scroll Top</button>
+    </div>
+</body>
+</html>
+
+
+
