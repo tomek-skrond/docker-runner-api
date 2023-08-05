@@ -17,7 +17,6 @@ func main() {
 		panic(err)
 	}
 	img := "itzg/minecraft-server"
-	bc := "./"
 	bm := true
 	cn := "bebok"
 	ports, err := nat.NewPort("tcp", "25565-25565")
@@ -58,7 +57,6 @@ func main() {
 
 	runner := NewContainerRunner(
 		img,
-		bc,
 		bm,
 		cn,
 		conf,

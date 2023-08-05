@@ -18,7 +18,6 @@ import (
 
 type ContainerRunner struct {
 	Image         string                      // image for a container
-	BuildContext  string                      // build context (a path) for dockerfile
 	BuildMode     bool                        // build mode (if set to true -> container builds from Dockerfile)
 	ContainerName string                      // container name
 	Context       context.Context             // context (needed for Docker API functions) from "context" package
@@ -32,7 +31,6 @@ type ContainerRunner struct {
 }
 
 func NewContainerRunner(img string,
-	bc string,
 	bm bool,
 	cn string,
 	conf container.Config,
@@ -43,7 +41,6 @@ func NewContainerRunner(img string,
 	startopts types.ContainerStartOptions) *ContainerRunner {
 	return &ContainerRunner{
 		Image:         img,
-		BuildContext:  bc,
 		BuildMode:     bm,
 		ContainerName: cn,
 		Context:       context.Background(),
