@@ -31,7 +31,6 @@ type ContainerRunner struct {
 }
 
 func NewContainerRunner(img string,
-	bm bool,
 	cn string,
 	conf container.Config,
 	hostconf container.HostConfig,
@@ -41,7 +40,6 @@ func NewContainerRunner(img string,
 	startopts types.ContainerStartOptions) *ContainerRunner {
 	return &ContainerRunner{
 		Image:         img,
-		BuildMode:     bm,
 		ContainerName: cn,
 		Context:       context.Background(),
 		Client:        &client.Client{},
