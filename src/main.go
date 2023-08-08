@@ -19,6 +19,8 @@ func main() {
 	img := "itzg/minecraft-server"
 	cn := "bebok"
 	ports, err := nat.NewPort("tcp", "25565-25565")
+	networkName := "mcnet"
+
 	if err != nil {
 		panic(err)
 	}
@@ -39,13 +41,21 @@ func main() {
 			"25565/tcp": []nat.PortBinding{
 				{
 					HostIP:   "0.0.0.0",
-					HostPort: "9999",
+					HostPort: "25565",
 				},
 			},
 		},
-		AutoRemove: true,
+		AutoRemove:  true,
+		NetworkMode: "wtf",
+		//NetworkMode: container.NetworkMode(container.NetworkMode("minecraft").NetworkName()),
 	}
-	netconf := network.NetworkingConfig{}
+	netconf := network.NetworkingConfig{
+		EndpointsConfig: map[string]*network.EndpointSettings{
+			networkName: {
+				NetworkID: networkName,
+			},
+		},
+	}
 	platform := v1.Platform{}
 	pullopts := types.ImagePullOptions{}
 	startopts := types.ContainerStartOptions{}
@@ -57,6 +67,7 @@ func main() {
 	runner := NewContainerRunner(
 		img,
 		cn,
+		networkName,
 		conf,
 		hostconf,
 		netconf,

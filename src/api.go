@@ -3,6 +3,7 @@ package main
 import (
 	"fmt"
 	"html/template"
+	"log"
 	"net/http"
 	"os"
 	"time"
@@ -11,8 +12,10 @@ import (
 )
 
 type APIServer struct {
-	ListenPort string
-	Runner     *ContainerRunner
+	ListenPort  string
+	Runner      *ContainerRunner
+	InfoLogger  *log.Logger
+	ErrorLogger *log.Logger
 }
 
 func NewAPIServer(lp string, r *ContainerRunner) *APIServer {
@@ -39,13 +42,14 @@ func (s *APIServer) Logs(w http.ResponseWriter, r *http.Request) {
 	path := os.Getenv("TEMPLATE_PATH")
 	logsPath := os.Getenv("LOGS_PATH")
 
-	logs, error := GetMcServerLogs(logsPath)
-	if error != nil {
-		fmt.Println(error)
+	logs, err := GetMcServerLogs(logsPath)
+	if err != nil {
+		fmt.Println(err)
 	}
 
 	t, err := template.ParseFiles(path + "logs.html")
 	if err != nil {
+
 		fmt.Println("error in logs template")
 		panic(err)
 	}

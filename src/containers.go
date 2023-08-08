@@ -20,6 +20,7 @@ type ContainerRunner struct {
 	Image         string                      // image for a container
 	BuildMode     bool                        // build mode (if set to true -> container builds from Dockerfile)
 	ContainerName string                      // container name
+	NetworkName   string                      // network name
 	Context       context.Context             // context (needed for Docker API functions) from "context" package
 	Client        *client.Client              // docker client
 	Config        container.Config            // configuration scheme for docker container
@@ -32,6 +33,7 @@ type ContainerRunner struct {
 
 func NewContainerRunner(img string,
 	cn string,
+	netname string,
 	conf container.Config,
 	hostconf container.HostConfig,
 	netconf network.NetworkingConfig,
@@ -41,6 +43,7 @@ func NewContainerRunner(img string,
 	return &ContainerRunner{
 		Image:         img,
 		ContainerName: cn,
+		NetworkName:   netname,
 		Context:       context.Background(),
 		Client:        &client.Client{},
 		Config:        conf,
@@ -105,6 +108,13 @@ func ExtractImageID(buildResponse types.ImageBuildResponse) (string, error) {
 	return buildAux.ID, nil
 }
 
+func (r *ContainerRunner) CreateNetwork() (types.NetworkCreateResponse, error) {
+	return r.Client.NetworkCreate(
+		r.Context,
+		r.NetworkName,
+		types.NetworkCreate{},
+	)
+}
 func (r *ContainerRunner) CreateContainer() (container.CreateResponse, error) {
 	return r.Client.ContainerCreate(
 		r.Context,
@@ -134,6 +144,12 @@ func (r *ContainerRunner) Containerize() {
 		panic(err)
 	}
 
+	netresp, err := r.CreateNetwork()
+	if err != nil {
+		panic(err)
+	}
+	fmt.Printf("Created network with name %v and ID: %v\n", r.NetworkName, netresp.ID)
+
 	resp, err := r.CreateContainer()
 	if err != nil {
 		panic(err)
@@ -153,26 +169,39 @@ func (r *ContainerRunner) StopContainer() {
 		panic(err)
 	}
 
-	containername := r.ContainerName
 	noWaitTimeout := 0
-	filters := filters.NewArgs()
-	filters.Add("name", containername)
-	containers, err := r.Client.ContainerList(r.Context, types.ContainerListOptions{Filters: filters})
+	containerFilters := filters.NewArgs()
+	containerFilters.Add("name", r.ContainerName)
+
+	networkFilters := filters.NewArgs()
+	networkFilters.Add("name", r.NetworkName)
+
+	containers, err := r.Client.ContainerList(r.Context, types.ContainerListOptions{Filters: containerFilters})
+	networks, err := r.Client.NetworkList(r.Context, types.NetworkListOptions{Filters: networkFilters})
+
 	if err != nil {
 		panic(err)
 	}
 
-	if len(containers) == 0 {
+	if len(containers) == 0 && len(networks) == 0 {
 		fmt.Println("Container does not exist")
 	}
 
 	if len(containers) == 1 {
 		fmt.Println("container ID found:", containers[0].ID)
-
-		if err := r.Client.ContainerStop(r.Context, containername, container.StopOptions{Timeout: &noWaitTimeout}); err != nil {
+		if err := r.Client.ContainerStop(r.Context, r.ContainerName, container.StopOptions{Timeout: &noWaitTimeout}); err != nil {
 			panic(err)
 		}
 		fmt.Println("Success stopping container ", r.ContainerName)
+
+	}
+
+	if len(networks) == 1 {
+		fmt.Println("network ID found:", networks[0].ID)
+		if err := r.Client.NetworkRemove(r.Context, r.NetworkName); err != nil {
+			panic(err)
+		}
+		fmt.Println("Success removing network ", r.NetworkName)
 	}
 
 }
