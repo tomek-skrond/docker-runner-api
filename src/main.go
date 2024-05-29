@@ -49,9 +49,9 @@ func main() {
 				},
 			},
 		},
-		AutoRemove:  true,
-		NetworkMode: "wtf",
-		//NetworkMode: container.NetworkMode(container.NetworkMode("minecraft").NetworkName()),
+		AutoRemove: true,
+		// NetworkMode: "wtf",
+		NetworkMode: container.NetworkMode(container.NetworkMode(networkName).NetworkName()),
 	}
 	netconf := network.NetworkingConfig{
 		EndpointsConfig: map[string]*network.EndpointSettings{
