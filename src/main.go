@@ -21,6 +21,10 @@ func main() {
 	ports, err := nat.NewPort("tcp", "25565-25565")
 	networkName := "mcnet"
 
+	templatePath := fmt.Sprintf("%v/templates/", bindPath)
+	logPath := fmt.Sprintf("%v/mcdata/logs/latest.log", bindPath)
+
+	// fmt.Println(bindPath)
 	if err != nil {
 		panic(err)
 	}
@@ -60,7 +64,7 @@ func main() {
 	pullopts := types.ImagePullOptions{}
 	startopts := types.ContainerStartOptions{}
 
-	if hostconf.AutoRemove != true {
+	if !hostconf.AutoRemove {
 		hostconf.AutoRemove = true
 	}
 
@@ -77,7 +81,7 @@ func main() {
 
 	listenPort := ":7777"
 
-	server := NewAPIServer(listenPort, runner)
+	server := NewAPIServer(listenPort, templatePath, logPath, runner)
 
 	server.Run()
 }

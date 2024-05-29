@@ -5,23 +5,32 @@ import (
 	"html/template"
 	"log"
 	"net/http"
-	"os"
 	"time"
 
 	"github.com/gorilla/mux"
 )
 
+type ServerConfig struct {
+	ListenPort   string
+	TemplatePath string
+	LogsPath     string
+}
+
 type APIServer struct {
-	ListenPort  string
+	ServerConfig
 	Runner      *ContainerRunner
 	InfoLogger  *log.Logger
 	ErrorLogger *log.Logger
 }
 
-func NewAPIServer(lp string, r *ContainerRunner) *APIServer {
+func NewAPIServer(lp string, templatePath string, logsPath string, r *ContainerRunner) *APIServer {
 	return &APIServer{
-		ListenPort: lp,
-		Runner:     r,
+		ServerConfig: ServerConfig{
+			ListenPort:   lp,
+			TemplatePath: templatePath,
+			LogsPath:     logsPath,
+		},
+		Runner: r,
 	}
 }
 
@@ -39,8 +48,8 @@ func (s *APIServer) Run() {
 }
 
 func (s *APIServer) Logs(w http.ResponseWriter, r *http.Request) {
-	path := os.Getenv("TEMPLATE_PATH")
-	logsPath := os.Getenv("LOGS_PATH")
+	path := s.TemplatePath
+	logsPath := s.LogsPath
 
 	logs, err := GetMcServerLogs(logsPath)
 	if err != nil {
@@ -58,8 +67,12 @@ func (s *APIServer) Logs(w http.ResponseWriter, r *http.Request) {
 
 }
 func (s *APIServer) Home(w http.ResponseWriter, r *http.Request) {
-	path := os.Getenv("TEMPLATE_PATH")
-	t, err := template.ParseFiles(path + "home.html")
+	templatePath := s.TemplatePath
+
+	// fmt.Println(logsPath)
+	fmt.Println(templatePath)
+
+	t, err := template.ParseFiles(templatePath + "home.html")
 	if err != nil {
 		fmt.Println("error in home template")
 		panic(err)
