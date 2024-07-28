@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"math/rand/v2"
 	"os"
 
 	"github.com/docker/docker/api/types"
@@ -19,7 +20,7 @@ func main() {
 	img := "itzg/minecraft-server"
 	cn := "bebok"
 	ports, err := nat.NewPort("tcp", "25565-25565")
-	networkName := "mcnet"
+	networkName := fmt.Sprintf("mcnet-%d", rand.IntN(10000))
 
 	templatePath := fmt.Sprintf("%v/templates/", bindPath)
 	logPath := fmt.Sprintf("%v/mcdata/logs/latest.log", bindPath)
