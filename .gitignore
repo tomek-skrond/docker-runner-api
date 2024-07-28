@@ -24,3 +24,5 @@ go.work
 
 mcdata
 runner
+
+tmp/
