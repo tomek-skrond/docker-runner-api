@@ -26,3 +26,6 @@ mcdata
 runner
 
 tmp/
+
+mcdata_*_*.zip
+mcdata*.zip
