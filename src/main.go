@@ -82,7 +82,9 @@ func main() {
 
 	listenPort := ":7777"
 
-	server := NewAPIServer(listenPort, templatePath, logPath, runner)
+	secret := os.Getenv("JWT_SECRET")
+
+	server := NewAPIServer(listenPort, templatePath, logPath, runner, secret)
 
 	server.Run()
 }
