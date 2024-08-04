@@ -1,0 +1,164 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@4.3.1/dist/css/bootstrap.min.css" integrity="sha384-ggOyR0iXCbMQv3Xipma34MD+dH/1fQ784/j6cY/iJTQUOhcWr7x9JvoRxT2MZw1T" crossorigin="anonymous">
+    <link rel="stylesheet" type="text/css" href="styles/style.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans:ital,wght@0,100..900;1,100..900&family=Pixelify+Sans:wght@400..700&family=Roboto+Mono:ital,wght@0,100..700;1,100..700&family=Source+Code+Pro&display=swap" rel="stylesheet">
+    <title>Server Management</title>
+    <style>
+        * {
+            font-family: "Pixelify Sans", sans-serif;
+            font-optical-sizing: auto;
+            font-weight: lighter;
+            font-style: normal;
+        }
+
+        p {
+            text-align: center;
+        }
+
+        .header {
+            position: relative;
+            min-height: 300px;
+            width: 100%;
+        }
+
+        .header-content {
+            width: 100%;
+            position: absolute;
+            bottom: 0;
+            left: 0;
+        }
+
+        .container {
+            display: flex;
+            flex-direction: row;
+            justify-content: center; /* Centers items horizontally */
+            align-items: center;     /* Centers items vertically */
+            flex-wrap: wrap;         /* Allows wrapping of items if there's not enough space */
+            gap: 20px;               /* Adds spacing between items */
+        }
+        
+        .block-level {
+            margin: 0;               /* Remove default margin to prevent extra spacing */
+            border-radius: 6px;
+            background-color: aquamarine;
+            text-align: center;      /* Center text inside each block */
+            width: 250px;            /* Set a fixed width for consistency */
+            height: 250px;           /* Set a fixed height for consistency */
+        }
+
+        .drop-shadow {
+            font-size: 30px;
+            font-weight: bold;
+        }
+
+        .drop-shadow.right {
+            box-shadow: 4px 0 2px -2px rgba(0,0,0,0.4)
+        }
+        .drop-shadow.green {
+            background: rgb(152, 255, 197);
+        }
+        .drop-shadow.red {
+            background: rgb(255, 155, 155);
+        }
+        .drop-shadow.blue {
+            background: rgb(152, 193, 255);
+        }
+        .drop-shadow.purple {
+            background: rgb(160, 100, 255);
+        }
+
+        button, input[type="submit"], input[type="reset"] {
+            background: none;
+            color: inherit;
+            border: none;
+            padding: 0;
+            font: inherit;
+            cursor: pointer;
+            outline: inherit;
+            width: 100%;            /* Make the button fill the form */
+            height: 100%;           /* Make the button fill the form */
+        }
+        
+        form.drop-shadow:hover {
+            background-color: blanchedalmond;
+            cursor: pointer;
+            border: 1px 1px 1px 1px black;
+        }
+
+        /* Sticky footer styles */
+        html, body {
+            height: 100%;
+            margin: 0;
+        }
+
+        .page-wrapper {
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .content {
+            flex: 1;
+        }
+
+        .footer {
+            background-color: #f8f9fa; /* Light gray background for the footer */
+            padding: 20px 0;
+        }
+    </style>
+</head>
+<body>
+    <iframe name="dummyframe" id="dummyframe" style="display: none;"></iframe>
+
+    <div class="page-wrapper">
+        <div class="content">
+            <div class="jumbotron jumbotron-fluid">
+                <h1 class="display-4 container">Minecraft Server Management</h1>
+                <p class="lead container">You can Start/Stop server and view server logs</p>
+                <p class="lead container">Server is managed using Go code with Docker container configuration using Docker SDK for Golang</p>
+            </div>
+
+            <div class="container">
+                <form class="block-level drop-shadow green right" action="/start" method="post" target="dummyframe">
+                    <input type="submit" value="Start Server">
+                </form>
+
+                <form class="block-level drop-shadow red right" action="/stop" method="post" target="dummyframe">
+                    <input type="submit" value="Stop Server">
+                </form>
+
+                <form class="block-level drop-shadow blue" action="/logs" method="get">
+                    <input type="submit" value="See Logs">
+                </form>
+
+                <form class="block-level drop-shadow purple" action="/backups" method="get">
+                    <input type="submit" value="Backup Server">
+                </form>
+                
+            </div>
+        </div>
+
+        <div class="footer jumbotron jumbotron-fluid">
+            <p class="lead container">Thank you for using this app!</p>
+            <p class="lead container">Visit my Github page in a link below:</p>
+            <p class="lead container">
+                <a href="https://github.com/tomek-skrond">tomek-skrond</a>
+            </p>
+            <p class="lead container">For more info about this project, check out: </p>
+            <p class="lead container">
+                <a href="https://github.com/tomek-skrond/docker-runner-api">docker-runner-api</a>
+            </p>
+        </div>
+    </div>
+
+
+    
+</body>
+</html>
