@@ -151,47 +151,33 @@ func (s *APIServer) BackupPage(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s *APIServer) Logs(w http.ResponseWriter, r *http.Request) {
-	path := s.TemplatePath
 	logsPath := s.LogsPath
-
 	logs, err := GetMcServerLogs(logsPath)
 	if err != nil {
 		log.Println(err)
 	}
 
-	t, err := template.ParseFiles(path + "logs.html")
-	if err != nil {
-		log.Println("error in logs template")
-	}
-
-	t.Execute(w, logs)
-
+	s.WriteTemplate(w, "logs.html", logs)
 	log.Println("logs accessed")
 
 }
 func (s *APIServer) Home(w http.ResponseWriter, r *http.Request) {
-	templatePath := s.TemplatePath
-
-	// fmt.Println(logsPath)
-	fmt.Println(templatePath)
-
-	t, err := template.ParseFiles(templatePath + "home.html")
-	if err != nil {
-		fmt.Println("error in home template")
-		panic(err)
-	}
-
-	t.Execute(w, "logs some day")
+	s.WriteTemplate(w, "home.html", nil)
 	log.Println("Home page accessed")
 }
 func (s *APIServer) Stop(w http.ResponseWriter, r *http.Request) {
+	// s.WriteTemplate(w, "home.html", nil)
+	http.Redirect(w, r, "/home", http.StatusSeeOther)
 	s.Runner.StopContainer()
-	WriteJSON(w, http.StatusOK, "Stop container accessed")
+	// WriteJSON(w, http.StatusOK, "Stop container accessed")
 }
 
 func (s *APIServer) Start(w http.ResponseWriter, r *http.Request) {
+	// s.WriteTemplate(w, "home.html", nil)
+	http.Redirect(w, r, "/home", http.StatusSeeOther)
 	s.Runner.Containerize()
-	WriteJSON(w, http.StatusOK, "Start container accessed")
+	// WriteJSON(w, http.StatusOK, "Start container accessed")
+	log.Println("container accessed")
 }
 
 func WriteJSON(w http.ResponseWriter, status int, v any) {
@@ -199,4 +185,21 @@ func WriteJSON(w http.ResponseWriter, status int, v any) {
 	w.Header().Add("Content-Type", "application/json")
 	fmt.Printf("%v Request Status: %d \n", time.Now().UTC(), status)
 	w.Write([]byte(fmt.Sprintf("Status: %v", status)))
+}
+
+func (s *APIServer) WriteTemplate(w http.ResponseWriter, site string, v any) {
+
+	templatePath := s.TemplatePath
+
+	// fmt.Println(logsPath)
+	// fmt.Println(templatePath)
+
+	t, err := template.ParseFiles(templatePath + site)
+	if err != nil {
+		fmt.Println("error in home template")
+		panic(err)
+	}
+
+	t.Execute(w, v)
+
 }
