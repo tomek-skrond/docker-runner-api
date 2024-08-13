@@ -2,8 +2,6 @@ module main
 
 go 1.21
 
-toolchain go1.22.2
-
 require (
 	cloud.google.com/go/auth v0.7.2 // indirect
 	cloud.google.com/go/auth/oauth2adapt v0.2.3 // indirect

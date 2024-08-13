@@ -1,0 +1,13 @@
+services:
+  mcmgmt:
+    build: src/
+    container_name: mcmgmt
+    ports:
+      - "7777:7777"
+    environment:
+      ADMIN_USER: ${ADMIN_USER}
+      ADMIN_PASSWORD: ${ADMIN_PASSWORD}
+      JWT_SECRET: ${JWT_SECRET}
+    volumes:
+      - ./src/mcdata:/app/mcdata
+      - /var/run/docker.sock:/var/run/docker.sock  # Share Docker socket
