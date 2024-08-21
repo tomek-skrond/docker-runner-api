@@ -1,6 +1,6 @@
 module main
 
-go 1.21
+go 1.23
 
 require (
 	github.com/docker/docker v24.0.4+incompatible
