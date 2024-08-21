@@ -62,8 +62,24 @@ func (s *APIServer) Run() {
 }
 
 func (s *APIServer) LoginPage(w http.ResponseWriter, r *http.Request) {
-	path := s.TemplatePath
+	// Check if the user already has a valid JWT token
+	cookie, err := r.Cookie("token")
+	if err == nil {
+		tokenString := cookie.Value
+		claims := &jwt.StandardClaims{}
+		token, err := jwt.ParseWithClaims(tokenString, claims, func(token *jwt.Token) (interface{}, error) {
+			return s.jwtSecret, nil
+		})
 
+		if err == nil && token.Valid {
+			// If the token is valid, redirect to the home page
+			http.Redirect(w, r, "/home", http.StatusSeeOther)
+			return
+		}
+	}
+
+	// If there's no valid token, show the login page
+	path := s.TemplatePath
 	t, err := template.ParseFiles(path + "login.html")
 	if err != nil {
 		log.Println(err)
@@ -135,8 +151,25 @@ func (s *APIServer) JwtAuth(next http.Handler) http.Handler {
 		next.ServeHTTP(w, r)
 	})
 }
+
 func (s *APIServer) Backup(w http.ResponseWriter, r *http.Request) {
+	backupName := r.FormValue("name")
+	if backupName == "" {
+		backupName = "server"
+	}
+
 	log.Println("backup initiated")
+	currentTime := time.Now()
+	// Format the time to match the desired format
+	formattedTime := currentTime.Format("20060102_150405")
+
+	fileName := fmt.Sprintf("%s_%s.zip", backupName, formattedTime)
+
+	if err := zipit("mcdata", "backups/"+fileName, false); err != nil {
+		log.Fatalln(err)
+	}
+
+	http.Redirect(w, r, "/backups", http.StatusSeeOther)
 }
 
 func (s *APIServer) BackupPage(w http.ResponseWriter, r *http.Request) {
@@ -147,7 +180,16 @@ func (s *APIServer) BackupPage(w http.ResponseWriter, r *http.Request) {
 		log.Println(err)
 	}
 
-	t.Execute(w, nil)
+	backupsStringArr, err := GetAvailableBackups("backups/")
+	if err != nil {
+		log.Fatalln(err)
+	}
+
+	backups := BackupTemplateData{
+		Backups: backupsStringArr,
+	}
+
+	t.Execute(w, backups)
 }
 
 func (s *APIServer) Logs(w http.ResponseWriter, r *http.Request) {
@@ -190,9 +232,6 @@ func WriteJSON(w http.ResponseWriter, status int, v any) {
 func (s *APIServer) WriteTemplate(w http.ResponseWriter, site string, v any) {
 
 	templatePath := s.TemplatePath
-
-	// fmt.Println(logsPath)
-	// fmt.Println(templatePath)
 
 	t, err := template.ParseFiles(templatePath + site)
 	if err != nil {
