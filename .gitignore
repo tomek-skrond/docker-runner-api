@@ -26,6 +26,7 @@ mcdata
 runner
 
 tmp/
+backups/
 
 mcdata_*_*.zip
 mcdata*.zip
