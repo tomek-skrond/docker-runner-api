@@ -25,7 +25,8 @@ func main() {
 	templatePath := fmt.Sprintf("%v/templates/", bindPath)
 	logPath := fmt.Sprintf("%v/mcdata/logs/latest.log", bindPath)
 
-	// fmt.Println(bindPath)
+	fmt.Println(bindPath)
+	// fmt.Printf("%v/mcdata/:/data/\n", bindPath)
 	if err != nil {
 		panic(err)
 	}

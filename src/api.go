@@ -86,7 +86,7 @@ func (s *APIServer) Login(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	expirationTime := time.Now().Add(5 * time.Minute)
+	expirationTime := time.Now().Add(24 * time.Hour)
 	claims := &jwt.StandardClaims{
 		ExpiresAt: expirationTime.Unix(),
 		Issuer:    username,
