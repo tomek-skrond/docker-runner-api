@@ -1,72 +1,100 @@
-
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
     <meta http-equiv="X-UA-Compatible" content="IE=edge">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@4.3.1/dist/css/bootstrap.min.css" integrity="sha384-ggOyR0iXCbMQv3Xipma34MD+dH/1fQ784/j6cY/iJTQUOhcWr7x9JvoRxT2MZw1T" crossorigin="anonymous">
+    <link rel="stylesheet"
+        href="https://cdn.jsdelivr.net/npm/bootstrap@4.3.1/dist/css/bootstrap.min.css"
+        integrity="sha384-ggOyR0iXCbMQv3Xipma34MD+dH/1fQ784/j6cY/iJTQUOhcWr7x9JvoRxT2MZw1T" crossorigin="anonymous">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans:ital,wght@0,100..900;1,100..900&family=Pixelify+Sans:wght@400..700&family=Roboto+Mono:ital,wght@0,100..700;1,100..700&family=Source+Code+Pro&display=swap" rel="stylesheet">
+    <link
+        href="https://fonts.googleapis.com/css2?family=Noto+Sans:ital,wght@0,100..900;1,100..900&family=Pixelify+Sans:wght@400..700&family=Roboto+Mono:ital,wght@0,100..700;1,100..700&family=Source+Code+Pro&display=swap"
+        rel="stylesheet">
     <title>View Logs</title>
     <style>
-
-        *{
-            font-family: "Pixelify Sans", sans-serif;
+        * {
             font-optical-sizing: auto;
-            font-weight: lighter;
+            font-weight: bold;
             font-style: normal;
         }
 
         div.scroll {
-          width: 100%;
-          height: 100%;
-          overflow-x: hidden;
-          overflow-y: auto;
-          padding: 20px;
+            width: 100%;
+            height: 75vh; /* Adjusted to make space for the header */
+            overflow-x: hidden;
+            overflow-y: auto;
+            padding: 20px;
+            margin-top: 80px; /* Increased margin to show the top line of the frame */
+            border: 3px solid rgb(139, 139, 139); /* Black frame */
+            /* border-radius: 10px; Optional: rounded corners */
+            background-color: white; /* Ensure a consistent background inside the frame */
         }
+
         .btn {
             opacity: 0.4;
         }
-        .btn.btn-primary:hover{
-            opacity: 1;
 
-        }
-        .btn.btn-secondary:hover{
+        .btn.btn-primary:hover {
             opacity: 1;
         }
-      </style>
-        <script>
 
-            function scrollToTop(){
-                const element = document.getElementById("scrolls");
-                element.scrollLeft = 0;
-                element.scrollTop = 0;
-            }
-            function scrollToBottom(){
-                const element = document.getElementById("scrolls");
-                element.scrollLeft = 0;
-                element.scrollTop = 100000000000000000;
-            }
+        .btn.btn-secondary:hover {
+            opacity: 1;
+        }
 
-        </script>
+        h1.fixed {
+            z-index: 10;
+            position: fixed;
+            width: 100%;
+            background-color: white;
+            top: 0;
+            padding: 10px 0;
+        }
+
+        .button-container {
+            position: fixed;
+            bottom: 0;
+            width: 100%;
+            text-align: center;
+            z-index: 10;
+            background-color: white;
+            padding: 10px 0;
+        }
+    </style>
+    <script>
+        function scrollToTop() {
+            const element = document.getElementById("scrolls");
+            element.scrollLeft = 0;
+            element.scrollTop = 0;
+        }
+
+        function scrollToBottom() {
+            const element = document.getElementById("scrolls");
+            element.scrollLeft = 0;
+            element.scrollTop = element.scrollHeight;
+        }
+    </script>
 </head>
+
 <body>
 
-    <div class="fixed-bottom scroll" id="scrolls">
+    <h1 class="fixed text-2xl font-bold text-center">Log Navigator</h1>
+
+    <div class="scroll" id="scrolls">
         {{range $val := .}}
-            <div style="font-size:small;" class="alert alert-info" role="alert">{{$val}}</div>
+        <div style="font-size:small;" class="alert alert-info" role="alert">{{$val}}</div>
         {{end}}
     </div>
 
-    <div class="fixed-bottom text-center">
-        <button type="button" class="position-sticky btn btn-primary btn-lg" class="btn" onClick="window.location.reload();">Refresh Page</button>
-        <button onclick="scrollToBottom()" type="button" class="btn btn-secondary btn-lg" class="btn" onClick="window.location.reload();">Scroll Bottom</button>
-        <button onclick="scrollToTop()" type="button" class="btn btn-secondary btn-lg" class="btn" onClick="window.location.reload();">Scroll Top</button>
+    <div class="button-container">
+        <button type="button" class="btn btn-primary btn-lg" onClick="window.location.reload();">Refresh Page</button>
+        <button onclick="scrollToBottom()" type="button" class="btn btn-secondary btn-lg">Scroll Bottom</button>
+        <button onclick="scrollToTop()" type="button" class="btn btn-secondary btn-lg">Scroll Top</button>
     </div>
+
 </body>
+
 </html>
-
-
-
