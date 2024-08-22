@@ -178,6 +178,9 @@ func (r *ContainerRunner) StopContainer() {
 	networkFilters.Add("name", r.NetworkName)
 
 	containers, err := r.Client.ContainerList(r.Context, types.ContainerListOptions{Filters: containerFilters})
+	if err != nil {
+		panic(err)
+	}
 	networks, err := r.Client.NetworkList(r.Context, types.NetworkListOptions{Filters: networkFilters})
 
 	if err != nil {

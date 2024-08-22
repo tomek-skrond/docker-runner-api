@@ -13,23 +13,38 @@ import (
 )
 
 func main() {
+
 	bindPath, err := os.Getwd()
 	if err != nil {
 		panic(err)
 	}
-	img := "itzg/minecraft-server"
-	cn := "bebok"
-	ports, err := nat.NewPort("tcp", "25565-25565")
-	networkName := fmt.Sprintf("mcnet-%d", rand.IntN(10000))
-
 	templatePath := fmt.Sprintf("%v/templates/", bindPath)
 	logPath := fmt.Sprintf("%v/mcdata/logs/latest.log", bindPath)
 
-	fmt.Println(bindPath)
-	// fmt.Printf("%v/mcdata/:/data/\n", bindPath)
+	img := "itzg/minecraft-server"
+	cn := "bebok"
+
+	runner := InitRunner(img, cn, bindPath)
+
+	listenPort := ":7777"
+
+	secret := os.Getenv("JWT_SECRET")
+
+	server := NewAPIServer(listenPort, templatePath, logPath, runner, secret)
+
+	server.Run()
+}
+
+func InitRunner(containerImage, containerName, bindPath string) *ContainerRunner {
+	img := containerImage
+	cn := containerName
+
+	ports, err := nat.NewPort("tcp", "25565-25565")
 	if err != nil {
 		panic(err)
 	}
+	networkName := fmt.Sprintf("mcnet-%d", rand.IntN(10000))
+
 	conf := container.Config{
 		Hostname:     "minecraft",
 		Image:        img,
@@ -51,8 +66,7 @@ func main() {
 				},
 			},
 		},
-		AutoRemove: true,
-		// NetworkMode: "wtf",
+		AutoRemove:  true,
 		NetworkMode: container.NetworkMode(container.NetworkMode(networkName).NetworkName()),
 	}
 	netconf := network.NetworkingConfig{
@@ -81,11 +95,5 @@ func main() {
 		pullopts,
 		startopts)
 
-	listenPort := ":7777"
-
-	secret := os.Getenv("JWT_SECRET")
-
-	server := NewAPIServer(listenPort, templatePath, logPath, runner, secret)
-
-	server.Run()
+	return runner
 }
