@@ -105,17 +105,21 @@ func (b *Bucket) CreateGCSBucket() error {
 	}
 }
 
-// nothing important
-func placeholder() {
-	// try bucket
-	bucketName := os.Getenv("BACKUPS_BUCKET")
-	projectID := os.Getenv("PROJECT_ID")
-
-	bucket, err := NewBucket(bucketName, projectID)
+func (b *Bucket) ObjectExists(objectPath string) (bool, error) {
+	ctx := context.Background()
+	client, err := storage.NewClient(ctx)
 	if err != nil {
-		log.Fatalln(err)
+		return false, fmt.Errorf("failed to create GCS client: %v", err)
 	}
-	if err := bucket.CreateGCSBucket(); err != nil {
-		log.Println(err)
+	defer client.Close()
+
+	// Check if the object exists
+	_, err = client.Bucket(b.Name).Object(objectPath).Attrs(ctx)
+	if err != nil {
+		if err == storage.ErrObjectNotExist {
+			return false, nil
+		}
+		return false, err
 	}
+	return true, nil
 }

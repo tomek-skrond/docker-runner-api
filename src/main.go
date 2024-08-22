@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"log"
 	"math/rand/v2"
 	"os"
 
@@ -14,6 +15,7 @@ import (
 
 func main() {
 
+	//init server
 	bindPath, err := os.Getwd()
 	if err != nil {
 		panic(err)
@@ -21,18 +23,39 @@ func main() {
 	templatePath := fmt.Sprintf("%v/templates/", bindPath)
 	logPath := fmt.Sprintf("%v/mcdata/logs/latest.log", bindPath)
 
+	// create runner
 	img := "itzg/minecraft-server"
 	cn := "bebok"
 
 	runner := InitRunner(img, cn, bindPath)
 
+	// create bucket controller
+	bucketName := os.Getenv("BACKUPS_BUCKET")
+	projectID := os.Getenv("PROJECT_ID")
+
+	bucket, err := InitBucket(bucketName, projectID)
+	if err != nil {
+		log.Fatalln(err)
+	}
+
+	// create API server instance
 	listenPort := ":7777"
 
 	secret := os.Getenv("JWT_SECRET")
 
-	server := NewAPIServer(listenPort, templatePath, logPath, runner, secret)
+	server := NewAPIServer(listenPort, templatePath, logPath, runner, bucket, secret)
 
 	server.Run()
+}
+
+func InitBucket(bucketName, projectID string) (*Bucket, error) {
+	bucket, err := NewBucket(bucketName, projectID)
+	if err != nil {
+		log.Fatalln(err)
+		return nil, err
+	}
+
+	return bucket, nil
 }
 
 func InitRunner(containerImage, containerName, bindPath string) *ContainerRunner {

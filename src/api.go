@@ -21,12 +21,13 @@ type ServerConfig struct {
 type APIServer struct {
 	ServerConfig
 	Runner      *ContainerRunner
+	bucket      *Bucket
 	InfoLogger  *log.Logger
 	ErrorLogger *log.Logger
 	jwtSecret   []byte
 }
 
-func NewAPIServer(lp string, templatePath string, logsPath string, r *ContainerRunner, secret string) *APIServer {
+func NewAPIServer(lp string, templatePath string, logsPath string, r *ContainerRunner, b *Bucket, secret string) *APIServer {
 	return &APIServer{
 		ServerConfig: ServerConfig{
 			ListenPort:   lp,
@@ -34,6 +35,7 @@ func NewAPIServer(lp string, templatePath string, logsPath string, r *ContainerR
 			LogsPath:     logsPath,
 		},
 		Runner:    r,
+		bucket:    b,
 		jwtSecret: []byte(secret),
 	}
 }
@@ -55,10 +57,48 @@ func (s *APIServer) Run() {
 	r.Handle("/backups", s.JwtAuth(http.HandlerFunc(s.BackupPage))).Methods("GET")
 	r.Handle("/backup", s.JwtAuth(http.HandlerFunc(s.Backup))).Methods("POST")
 
+	r.Handle("/sync", s.JwtAuth(http.HandlerFunc(s.Sync))).Methods("POST")
+
 	fmt.Printf("Server listening on port %v\n", s.ListenPort)
 	if err := http.ListenAndServe(s.ListenPort, r); err != nil {
 		panic(err)
 	}
+}
+
+func (s *APIServer) Sync(w http.ResponseWriter, r *http.Request) {
+	backupsStringArr, err := GetAvailableBackups("backups/")
+	if err != nil {
+		log.Fatalln(err)
+	}
+
+	if err := s.bucket.CreateGCSBucket(); err != nil {
+		log.Println(err)
+		http.Redirect(w, r, "/backups", http.StatusInternalServerError)
+	}
+
+	for _, backup := range backupsStringArr {
+		objectPath := fmt.Sprintf("backups/%s", backup)
+
+		// Check if the object already exists in GCS
+		exists, err := s.bucket.ObjectExists(backup)
+		if err != nil {
+			log.Printf("Error checking if object exists in GCS: %v", err)
+			http.Error(w, "Internal server error", http.StatusInternalServerError)
+			return
+		}
+		if exists {
+			log.Printf("Object %s already exists in GCS. Skipping upload.", objectPath)
+			continue
+		}
+
+		if err := s.bucket.UploadFileToGCS(objectPath); err != nil {
+			log.Fatalln(err)
+			http.Error(w, "Internal server error", http.StatusInternalServerError)
+		}
+	}
+	fmt.Println("uploading data to cloud successful")
+	http.Redirect(w, r, "/backups", http.StatusSeeOther)
+
 }
 
 func (s *APIServer) LoginPage(w http.ResponseWriter, r *http.Request) {
