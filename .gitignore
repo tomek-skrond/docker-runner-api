@@ -28,5 +28,7 @@ runner
 tmp/
 backups/
 
+credentials.json
+
 mcdata_*_*.zip
 mcdata*.zip
