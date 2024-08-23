@@ -6,6 +6,7 @@ import (
 	"log"
 	"net/http"
 	"os"
+	"path/filepath"
 	"time"
 
 	"github.com/golang-jwt/jwt"
@@ -239,12 +240,22 @@ func (s *APIServer) Logs(w http.ResponseWriter, r *http.Request) {
 		log.Println(err)
 	}
 
-	s.WriteTemplate(w, "logs.html", logs)
+	s.WriteTemplate(w, logs, "logs.html")
 	log.Println("logs accessed")
 
 }
+
 func (s *APIServer) Home(w http.ResponseWriter, r *http.Request) {
-	s.WriteTemplate(w, "home.html", nil)
+	data := map[string]string{
+		"Title": "Minecraft Server Management",
+	}
+
+	if err := s.WriteTemplate(w, data, "home.html"); err != nil {
+		log.Printf("Error rendering home template: %v", err)
+		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
+		return
+	}
+
 	log.Println("Home page accessed")
 }
 func (s *APIServer) Stop(w http.ResponseWriter, r *http.Request) {
@@ -269,7 +280,7 @@ func WriteJSON(w http.ResponseWriter, status int, v any) {
 	w.Write([]byte(fmt.Sprintf("Status: %v", status)))
 }
 
-func (s *APIServer) WriteTemplate(w http.ResponseWriter, site string, v any) {
+func (s *APIServer) WriteTemplate2(w http.ResponseWriter, site string, v any) {
 
 	templatePath := s.TemplatePath
 
@@ -281,4 +292,27 @@ func (s *APIServer) WriteTemplate(w http.ResponseWriter, site string, v any) {
 
 	t.Execute(w, v)
 
+}
+
+func (s *APIServer) WriteTemplate(w http.ResponseWriter, v any, site ...string) error {
+	var templates []string
+	for _, t := range site {
+		templates = append(templates, filepath.Join(s.TemplatePath, t))
+	}
+
+	// Print out the final template paths (for debugging)
+	fmt.Println("Loading templates:", templates)
+
+	t, err := template.ParseFiles(templates...)
+	if err != nil {
+		log.Printf("Template parsing error: %v", err)
+		return err
+	}
+
+	if err := t.Execute(w, v); err != nil {
+		log.Printf("Template execution error: %v", err)
+		return err
+	}
+
+	return nil
 }
