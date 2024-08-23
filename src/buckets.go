@@ -86,12 +86,16 @@ func (b *Bucket) CreateGCSBucket() error {
 		attrs, err := buckets.Next()
 		// Assume bucket not found if at Iterator end and create
 		if err == iterator.Done {
-			// Create bucket
+			// Create bucket without public access
 			if err := bucket.Create(ctx, b.projectID, &storage.BucketAttrs{
 				Location: "US",
+				UniformBucketLevelAccess: storage.UniformBucketLevelAccess{
+					Enabled: true, // Enforces access control uniformly
+				},
 			}); err != nil {
 				return fmt.Errorf("Failed to create bucket: %v", err)
 			}
+
 			log.Printf("Bucket %v created.\n", b.Name)
 			return nil
 		}

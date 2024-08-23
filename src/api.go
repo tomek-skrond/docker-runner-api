@@ -57,6 +57,7 @@ func (s *APIServer) Run() {
 
 	r.Handle("/backups", s.JwtAuth(http.HandlerFunc(s.BackupPage))).Methods("GET")
 	r.Handle("/backup", s.JwtAuth(http.HandlerFunc(s.Backup))).Methods("POST")
+	r.Handle("/load-backup", s.JwtAuth(http.HandlerFunc(s.LoadBackup))).Methods("POST")
 
 	r.Handle("/sync", s.JwtAuth(http.HandlerFunc(s.Sync))).Methods("POST")
 
@@ -64,6 +65,40 @@ func (s *APIServer) Run() {
 	if err := http.ListenAndServe(s.ListenPort, r); err != nil {
 		panic(err)
 	}
+}
+
+func (s *APIServer) LoadBackup(w http.ResponseWriter, r *http.Request) {
+	// shutdown server
+	s.Runner.StopContainer()
+	backupFile := r.FormValue("backup")
+	fmt.Println(backupFile)
+
+	log.Println("loading new backup initiated")
+	currentTime := time.Now()
+	// Format the time to match the desired format
+	formattedTime := currentTime.Format("20060102_150405")
+
+	fileName := fmt.Sprintf("%s_%s.zip", "mcdata", formattedTime)
+
+	//backup current state
+	if err := zipit("mcdata", "backups/"+fileName, false); err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		log.Fatalln(err)
+	}
+	//remove current server files
+	if err := removeAllFilesInDir("mcdata"); err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		log.Fatalln(err)
+	}
+	//unzip backup to mcdata/
+	if err := unzip(fmt.Sprintf("backups/%s", backupFile), "mcdata"); err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		log.Fatalln(err)
+	}
+	//start the server
+	s.Runner.Containerize()
+
+	http.Redirect(w, r, "/backups", http.StatusSeeOther)
 }
 
 func (s *APIServer) Sync(w http.ResponseWriter, r *http.Request) {
