@@ -5,9 +5,7 @@
     <meta charset="UTF-8">
     <meta http-equiv="X-UA-Compatible" content="IE=edge">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <link rel="stylesheet"
-        href="https://cdn.jsdelivr.net/npm/bootstrap@4.3.1/dist/css/bootstrap.min.css"
-        integrity="sha384-ggOyR0iXCbMQv3Xipma34MD+dH/1fQ784/j6cY/iJTQUOhcWr7x9JvoRxT2MZw1T" crossorigin="anonymous">
+    <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link
@@ -23,24 +21,20 @@
 
         div.scroll {
             width: 100%;
-            height: 75vh; /* Adjusted to make space for the header */
+            height: 75vh;
             overflow-x: hidden;
             overflow-y: auto;
             padding: 20px;
-            margin-top: 80px; /* Increased margin to show the top line of the frame */
-            border: 3px solid rgb(139, 139, 139); /* Black frame */
-            /* border-radius: 10px; Optional: rounded corners */
-            background-color: white; /* Ensure a consistent background inside the frame */
+            margin-top: 80px;
+            border: 1px solid rgb(139, 139, 139);
+            background-color: white;
         }
 
         .btn {
             opacity: 0.4;
         }
 
-        .btn.btn-primary:hover {
-            opacity: 1;
-        }
-
+        .btn.btn-primary:hover,
         .btn.btn-secondary:hover {
             opacity: 1;
         }
@@ -63,6 +57,12 @@
             background-color: white;
             padding: 10px 0;
         }
+
+        .alert svg {
+            width: 20px;
+            height: 20px;
+            margin-right: 8px;
+        }
     </style>
     <script>
         function scrollToTop() {
@@ -81,18 +81,33 @@
 
 <body>
 
-    <h1 class="fixed text-2xl font-bold text-center">Log Navigator</h1>
+    <div class="flex items-center justify-center">
+        <h1 class="text-4xl font-bold">Log Navigator</h1>
+    </div>
 
     <div class="scroll" id="scrolls">
         {{range $val := .}}
-        <div style="font-size:small;" class="alert alert-info" role="alert">{{$val}}</div>
+        <div class="alert flex items-center p-4 mb-4 text-sm text-blue-800 border border-blue-300 rounded-lg bg-blue-50 dark:bg-gray-800 dark:text-blue-400 dark:border-blue-800" role="alert">
+            <svg class="flex-shrink-0" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" fill="currentColor" viewBox="0 0 20 20">
+                <path d="M10 .5a9.5 9.5 0 1 0 9.5 9.5A9.51 9.51 0 0 0 10 .5ZM9.5 4a1.5 1.5 0 1 1 0 3 1.5 1.5 0 0 1 0-3ZM12 15H8a1 1 0 0 1 0-2h1v-3H8a1 1 0 0 1 0-2h2a1 1 0 0 1 1 1v4h1a1 1 0 0 1 0 2Z" />
+            </svg>
+            <div>
+                <span class="font-medium">Info</span> {{$val}}
+            </div>
+        </div>
         {{end}}
     </div>
 
     <div class="button-container">
-        <button type="button" class="btn btn-primary btn-lg" onClick="window.location.reload();">Refresh Page</button>
-        <button onclick="scrollToBottom()" type="button" class="btn btn-secondary btn-lg">Scroll Bottom</button>
-        <button onclick="scrollToTop()" type="button" class="btn btn-secondary btn-lg">Scroll Top</button>
+        <button onClick="window.location.reload();" type="button" class="focus:outline-none text-white bg-green-700 hover:bg-green-800 focus:ring-4 focus:ring-green-300 font-medium rounded-lg text-sm px-5 py-2.5 me-2 mb-2 dark:bg-green-600 dark:hover:bg-green-700 dark:focus:ring-green-800">
+            Refresh Page
+        </button>
+        <button onclick="scrollToBottom()" type="button" class="text-white bg-blue-700 hover:bg-blue-800 focus:ring-4 focus:ring-blue-300 font-medium rounded-lg text-sm px-5 py-2.5 me-2 mb-2 dark:bg-blue-600 dark:hover:bg-blue-700 focus:outline-none dark:focus:ring-blue-800">
+            Scroll Bottom
+        </button>
+        <button onclick="scrollToTop()"  type="button" class="text-white bg-blue-700 hover:bg-blue-800 focus:ring-4 focus:ring-blue-300 font-medium rounded-lg text-sm px-5 py-2.5 me-2 mb-2 dark:bg-blue-600 dark:hover:bg-blue-700 focus:outline-none dark:focus:ring-blue-800">
+            Scroll Top
+        </button>
     </div>
 
 </body>

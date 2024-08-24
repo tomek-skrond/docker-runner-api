@@ -53,6 +53,16 @@
                 Synchronize with Cloud
             </button>
         </form>
+
+        <!-- List of Cloud Backups -->
+        <h2 class="text-xl font-semibold mt-10 mb-4">Available Cloud Backups</h2>
+        <ul class="list-disc list-inside mb-6">
+            {{ range .CloudBackups }}
+            <li>{{ . }}</li>
+            {{ else }}
+            <li class="text-gray-500">No cloud backups available</li>
+            {{ end }}
+        </ul>
     </div>
 </body>
 
