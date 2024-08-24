@@ -60,6 +60,7 @@ func (s *APIServer) Run() {
 
 	r.Handle("/backups", s.JwtAuth(http.HandlerFunc(s.BackupPage))).Methods("GET")
 	r.Handle("/backup", s.JwtAuth(http.HandlerFunc(s.Backup))).Methods("POST")
+	r.Handle("/backup/delete", s.JwtAuth(http.HandlerFunc(s.DeleteBackup))).Methods("POST")
 	r.Handle("/load-backup", s.JwtAuth(http.HandlerFunc(s.LoadBackup))).Methods("POST")
 
 	r.Handle("/sync", s.JwtAuth(http.HandlerFunc(s.Sync))).Methods("POST")
@@ -357,6 +358,15 @@ func (s *APIServer) Backup(w http.ResponseWriter, r *http.Request) {
 	http.Redirect(w, r, "/backups", http.StatusSeeOther)
 }
 
+func (s *APIServer) DeleteBackup(w http.ResponseWriter, r *http.Request) {
+	backupToDelete := r.URL.Query().Get("delete")
+	removePath := fmt.Sprintf("backups/%s", backupToDelete)
+	if err := os.Remove(removePath); err != nil {
+		log.Fatalln(err)
+	}
+	log.Printf("backup %s deleted\n", backupToDelete)
+
+}
 func (s *APIServer) BackupPage(w http.ResponseWriter, r *http.Request) {
 	path := s.TemplatePath
 
@@ -396,8 +406,40 @@ func (s *APIServer) Logs(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s *APIServer) Home(w http.ResponseWriter, r *http.Request) {
-	data := map[string]string{
-		"Title": "Minecraft Server Management",
+	options := []map[string]string{
+		{
+			"OptionName":  "Start Server",
+			"Description": "You can start a Minecraft Server, starting consists of creating a container in a network through Docker Engine API and initializing all needed components for the server to function properly.",
+			"APIEndpoint": "/start",
+			"Action":      "Start Server",
+			"Method":      "post",
+		},
+		{
+			"OptionName":  "Stop Server",
+			"Description": "Stopping a server removes a container and gets rid of the temporary network created while starting. Only the data created by a server (your world save) is persisted within a project directory.",
+			"APIEndpoint": "/stop",
+			"Action":      "Stop Server",
+			"Method":      "post",
+		},
+		{
+			"OptionName":  "View Logs",
+			"Description": "Log Viewer helps you browse your server's startup logs. Options to refresh page, scroll down to bottom and top are implemented.",
+			"APIEndpoint": "/logs",
+			"Action":      "Go to Log Navigator",
+			"Method":      "get",
+		},
+		{
+			"OptionName":  "Backup Server",
+			"Description": "Your server can be easily backed up if you need to. There is an option to also persist your backups in a Google Cloud Storage Bucket via \"Synchronize with Cloud\" option (keep in mind that you have to configure GCP on your own).",
+			"APIEndpoint": "/backups",
+			"Action":      "Go to Backup Manager",
+			"Method":      "get",
+		},
+	}
+
+	data := map[string]interface{}{
+		"Title":   "Minecraft Server Management",
+		"Options": options,
 	}
 
 	if err := s.WriteTemplate(w, data, "home.html"); err != nil {

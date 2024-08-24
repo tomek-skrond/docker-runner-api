@@ -16,14 +16,6 @@
         footer {
             width: 100%;
         }
-        .whatever{
-          width: 80px;
-          height: 80px;
-        }
-        .whatever:hover{
-          width: 200%;
-          height: 200%;
-        }
     </style>
     <title>Document</title>
 </head>
@@ -33,76 +25,15 @@
             <div class="container px-5 py-24 mx-auto">
               <div class="text-center mb-20">
                 <h1 class="sm:text-3xl text-2xl font-medium title-font text-gray-900 mb-4">Minecraft Server Management</h1>
-                <p class="text-base leading-relaxed xl:w-2/4 lg:w-3/4 mx-auto text-gray-500s">You can Start/Stop server and view server logs.<br> Server is managed using Go code with Docker container configuration using Docker SDK for Golang.</p>
+                <p class="text-base leading-relaxed xl:w-2/4 lg:w-3/4 mx-auto text-gray-500">You can Start/Stop the server and view server logs.<br> The server is managed using Go code with Docker container configuration using Docker SDK for Golang.</p>
                 <div class="flex mt-6 justify-center">
                   <div class="w-16 h-1 rounded-full bg-indigo-500 inline-flex"></div>
                 </div>
               </div>
-              <div class="flex justify-center flex-wrap basis-1/3 sm:-m-4 -mx-4 -mb-10 -mt-4">
-                <div class="hover:bg-blue-100 p-4 md:w-1/3 flex flex-col text-center items-center">
-                    <form action="/start" method="post" class="flex-grow">
-                        <button class="w-20 h-20 inline-flex items-center justify-center rounded-full bg-indigo-100 text-indigo-500 mb-5 flex-shrink-0">
-                            <svg fill="#000000" viewBox="0 0 1920 1920" xmlns="http://www.w3.org/2000/svg"><g id="SVGRepo_bgCarrier" stroke-width="0"></g><g id="SVGRepo_tracerCarrier" stroke-linecap="round" stroke-linejoin="round"></g><g id="SVGRepo_iconCarrier"> <g fill-rule="evenodd"> <path d="M451.823 1807.059h1185.883c31.203 0 56.47-25.25 56.47-56.47V169.411c0-31.221-25.267-56.47-56.47-56.47H451.823V0h1185.883c93.561 0 169.411 75.798 169.411 169.412v1581.176c0 93.614-75.85 169.412-169.411 169.412H451.823v-112.941Z" fill-rule="nonzero"></path> <path d="M225.941 0v1920h112.941V0zm993.081 1016.47H564.76V903.53h654.262L976.6 661.106l79.861-79.861L1435.216 960l-378.755 378.754-79.861-79.861z"></path> </g> </g></svg>
-                        </button>
-                    </form>
-                  <div>
-                    <h2 class="text-gray-900 text-lg title-font font-medium mb-3">Start Server</h2>
-                    <!-- <p class="leading-relaxed text-base">asdf</p> -->
-                    <a class="mt-3 text-indigo-500 inline-flex items-center">More Info
-                      <svg fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="w-4 h-4 ml-2" viewBox="0 0 24 24">
-                        <path d="M5 12h14M12 5l7 7-7 7"></path>
-                      </svg>
-                    </a>
-                  </div>
-                </div>
-                <div class="hover:bg-blue-100 p-4 md:w-1/3 flex flex-col text-center items-center">
-                    <form action="/stop" method="post" class="flex-grow">
-                        <button class="w-20 h-20 inline-flex items-center justify-center rounded-full bg-indigo-100 text-indigo-500 mb-5 flex-shrink-0">
-                            <svg fill="#000000" viewBox="0 0 16 16" xmlns="http://www.w3.org/2000/svg"><g id="SVGRepo_bgCarrier" stroke-width="0"></g><g id="SVGRepo_tracerCarrier" stroke-linecap="round" stroke-linejoin="round"></g><g id="SVGRepo_iconCarrier"><path d="M3 7.38h10v1.25H3z"></path><path d="M8 .5A7.76 7.76 0 0 0 0 8a7.76 7.76 0 0 0 8 7.5A7.76 7.76 0 0 0 16 8 7.76 7.76 0 0 0 8 .5zm0 13.75A6.52 6.52 0 0 1 1.25 8 6.52 6.52 0 0 1 8 1.75 6.52 6.52 0 0 1 14.75 8 6.52 6.52 0 0 1 8 14.25z"></path></g></svg>
-                        </button>
-                    </form>
-                  <div>
-                    <h2 class="text-gray-900 text-lg title-font font-medium mb-3">Stop Server</h2>
-                    
-                    <a class="mt-3 text-indigo-500 inline-flex items-center">More Info
-                      <svg fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="w-4 h-4 ml-2" viewBox="0 0 24 24">
-                        <path d="M5 12h14M12 5l7 7-7 7"></path>
-                      </svg>
-                    </a>
-                  </div>
-                </div>
-                <div class="hover:bg-blue-100 p-4 md:w-1/3 flex flex-col text-center items-center">
-                    <form action="/logs" method="get" class="flex-grow">
-                        <button type="submit" formmethod="get" class="w-20 h-20 inline-flex items-center justify-center rounded-full bg-indigo-100 text-indigo-500 mb-5 flex-shrink-0">
-                            <svg viewBox="0 0 16 16" xmlns="http://www.w3.org/2000/svg" fill="none"><g id="SVGRepo_bgCarrier" stroke-width="0"></g><g id="SVGRepo_tracerCarrier" stroke-linecap="round" stroke-linejoin="round"></g><g id="SVGRepo_iconCarrier"> <g fill="#000000"> <path d="M5.314 1.256a.75.75 0 01-.07 1.058L3.889 3.5l1.355 1.186a.75.75 0 11-.988 1.128l-2-1.75a.75.75 0 010-1.128l2-1.75a.75.75 0 011.058.07zM7.186 1.256a.75.75 0 00.07 1.058L8.611 3.5 7.256 4.686a.75.75 0 10.988 1.128l2-1.75a.75.75 0 000-1.128l-2-1.75a.75.75 0 00-1.058.07zM2.75 7.5a.75.75 0 000 1.5h10.5a.75.75 0 000-1.5H2.75zM2 11.25a.75.75 0 01.75-.75h10.5a.75.75 0 010 1.5H2.75a.75.75 0 01-.75-.75zM2.75 13.5a.75.75 0 000 1.5h6.5a.75.75 0 000-1.5h-6.5z"></path> </g> </g></svg>
-                        </button>
-                    </form>
-                  <div>
-                    <h2 class="text-gray-900 text-lg title-font font-medium mb-3">Inspect Minecraft Logs</h2>
-                    
-                    <a class="mt-3 text-indigo-500 inline-flex items-center">More Info
-                      <svg fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="w-4 h-4 ml-2" viewBox="0 0 24 24">
-                        <path d="M5 12h14M12 5l7 7-7 7"></path>
-                      </svg>
-                    </a>
-                  </div>
-                </div>
-                <div class="hover:bg-blue-100 p-4 md:w-1/3 flex flex-col text-center items-center">
-                    <form action="/backups" method="get" class="flex-grow">
-                        <button type="submit" formmethod="get" class="w-20 h-20 inline-flex items-center justify-center rounded-full bg-indigo-100 text-indigo-500 mb-5 flex-shrink-0">
-                            <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><g id="SVGRepo_bgCarrier" stroke-width="0"></g><g id="SVGRepo_tracerCarrier" stroke-linecap="round" stroke-linejoin="round"></g><g id="SVGRepo_iconCarrier"> <path opacity="0.5" d="M2 17C2 15.1144 2 14.1716 2.58579 13.5858C3.17157 13 4.11438 13 6 13H18C19.8856 13 20.8284 13 21.4142 13.5858C22 14.1716 22 15.1144 22 17C22 18.8856 22 19.8284 21.4142 20.4142C20.8284 21 19.8856 21 18 21H6C4.11438 21 3.17157 21 2.58579 20.4142C2 19.8284 2 18.8856 2 17Z" stroke="#1C274C" stroke-width="1.5"></path> <path opacity="0.5" d="M2 6C2 4.11438 2 3.17157 2.58579 2.58579C3.17157 2 4.11438 2 6 2H18C19.8856 2 20.8284 2 21.4142 2.58579C22 3.17157 22 4.11438 22 6C22 7.88562 22 8.82843 21.4142 9.41421C20.8284 10 19.8856 10 18 10H6C4.11438 10 3.17157 10 2.58579 9.41421C2 8.82843 2 7.88562 2 6Z" stroke="#1C274C" stroke-width="1.5"></path> <path d="M13.5 6L18 6" stroke="#1C274C" stroke-width="1.5" stroke-linecap="round"></path> <path d="M6 7L6 5" stroke="#1C274C" stroke-width="1.5" stroke-linecap="round"></path> <path d="M9 7L9 5" stroke="#1C274C" stroke-width="1.5" stroke-linecap="round"></path> <path d="M13.5 17H18" stroke="#1C274C" stroke-width="1.5" stroke-linecap="round"></path> <path d="M6 18L6 16" stroke="#1C274C" stroke-width="1.5" stroke-linecap="round"></path> <path d="M9 18L9 16" stroke="#1C274C" stroke-width="1.5" stroke-linecap="round"></path> </g></svg>
-                        </button>
-                    </form>
-                  <div>
-                    <h2 class="text-gray-900 text-lg title-font font-medium mb-3">Backup Server</h2>
-                    
-                    <a class="mt-3 text-indigo-500 inline-flex items-center">More Info
-                      <svg fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="w-4 h-4 ml-2" viewBox="0 0 24 24">
-                        <path d="M5 12h14M12 5l7 7-7 7"></path>
-                      </svg>
-                    </a>
-                  </div>
-                </div>
+              <div class="flex justify-center flex-wrap gap-8">
+                {{ range .Options }}
+                  {{ template "optionblock" . }}
+                {{ end }}
               </div>
             </div>
         </section>
@@ -120,17 +51,6 @@
             This project: <a href="https://github.com/tomek-skrond/docker-runner-api">docker-runner-api</a>
           </p>
           <span class="inline-flex sm:ml-auto sm:mt-0 mt-4 justify-center sm:justify-start">
-
-            <!-- <a class="text-gray-500">
-              <svg fill="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="w-5 h-5" viewBox="0 0 24 24">
-                <path d="M18 2h-3a5 5 0 00-5 5v3H7v4h3v8h4v-8h3l1-4h-4V7a1 1 0 011-1h3z"></path>
-              </svg>
-            </a>
-            <a class="ml-3 text-gray-500">
-              <svg fill="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="w-5 h-5" viewBox="0 0 24 24">
-                <path d="M23 3a10.9 10.9 0 01-3.14 1.53 4.48 4.48 0 00-7.86 3v1A10.66 10.66 0 013 4s-4 9 5 13a11.64 11.64 0 01-7 2c9 5 20 0 20-11.5a4.5 4.5 0 00-.08-.83A7.72 7.72 0 0023 3z"></path>
-              </svg>
-            </a> -->
             <a href="https://me.tscrond.com" class="ml-3 text-gray-500">
                 <svg viewBox="0 0 24 24" fill="currentColor" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="0" class="w-5 h-5">
                     <path stroke="none" d="M5.68 4.174C6.309 3.453 7.117 3 8 3h8c.883 0 1.691.453 2.32 1.174A3.026 3.026 0 0119 6v12a3 3 0 01-3 3H8a3 3 0 01-3-3V6c0-.804.313-1.556.68-2.174zM8 5a1 1 0 00-1 1v12c0 .552.449 1 1 1h8c.552 0 1-.448 1-1V6a1 1 0 00-1-1H8z"></path>
@@ -149,3 +69,85 @@
     </footer>
 </body>
 </html>
+
+{{ define "optionblock" }}
+<div class="w-full sm:w-1/2 lg:w-1/3 p-6 max-w-md bg-white border border-gray-200 rounded-lg shadow-lg dark:bg-gray-800 dark:border-gray-700 mt-8">
+  {{ if eq .APIEndpoint "/start"  }}
+    {{ template "startsvg" }}
+  {{ end }}
+  {{ if eq .APIEndpoint "/stop"  }}
+    {{ template "stopsvg" }}
+  {{ end }}
+  {{ if eq .APIEndpoint "/backups"  }}
+    {{ template "backupsvg" }}
+  {{ end }}
+  {{ if eq .APIEndpoint "/logs"  }}
+    {{ template "logsvg" }}
+  {{ end }}
+  <a href="#">
+      <h5 class="mb-4 text-3xl font-bold tracking-tight text-gray-900 dark:text-white">{{ .OptionName }}</h5>
+  </a>
+  <p class="mb-5 font-normal text-gray-700 dark:text-gray-400">{{ .Description }}</p>
+
+  <form action="{{ .APIEndpoint }}" method="{{ .Method }}" class="inline-flex items-center px-4 py-3 text-lg font-medium text-center text-white bg-blue-700 rounded-lg hover:bg-blue-800 focus:ring-4 focus:outline-none focus:ring-blue-300 dark:bg-blue-600 dark:hover:bg-blue-700 dark:focus:ring-blue-800">
+    <button type="submit" formmethod="{{ .Method }}" class="inline-flex items-center justify-center">
+      {{ .Action }}
+    </button>
+  </form>
+</div>
+{{ end }}
+
+{{ define "startsvg" }}
+<svg width="48" height="48" fill="#000000" viewBox="0 0 1920 1920" xmlns="http://www.w3.org/2000/svg">
+    <g id="SVGRepo_bgCarrier" stroke-width="0"></g>
+    <g id="SVGRepo_tracerCarrier" stroke-linecap="round" stroke-linejoin="round"></g>
+    <g id="SVGRepo_iconCarrier">
+        <g fill-rule="evenodd">
+            <path d="M451.823 1807.059h1185.883c31.203 0 56.47-25.25 56.47-56.47V169.411c0-31.221-25.267-56.47-56.47-56.47H451.823V0h1185.883c93.561 0 169.411 75.798 169.411 169.412v1581.176c0 93.614-75.85 169.412-169.411 169.412H451.823v-112.941Z" fill-rule="nonzero"></path>
+            <path d="M225.941 0v1920h112.941V0zm993.081 1016.47H564.76V903.53h654.262L976.6 661.106l79.861-79.861L1435.216 960l-378.755 378.754-79.861-79.861z"></path>
+        </g>
+    </g>
+</svg>
+{{ end }}
+
+
+{{ define "stopsvg" }}
+<svg width="48" height="48" fill="#000000" viewBox="0 0 16 16" xmlns="http://www.w3.org/2000/svg">
+    <g id="SVGRepo_bgCarrier" stroke-width="0"></g>
+    <g id="SVGRepo_tracerCarrier" stroke-linecap="round" stroke-linejoin="round"></g>
+    <g id="SVGRepo_iconCarrier">
+        <path d="M3 7.38h10v1.25H3z"></path>
+        <path d="M8 .5A7.76 7.76 0 0 0 0 8a7.76 7.76 0 0 0 8 7.5A7.76 7.76 0 0 0 16 8 7.76 7.76 0 0 0 8 .5zm0 13.75A6.52 6.52 0 0 1 1.25 8 6.52 6.52 0 0 1 8 1.75 6.52 6.52 0 0 1 14.75 8 6.52 6.52 0 0 1 8 14.25z"></path>
+    </g>
+</svg>
+{{ end }}
+
+
+{{ define "backupsvg" }}
+<svg width="48" height="48" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+    <g id="SVGRepo_bgCarrier" stroke-width="0"></g>
+    <g id="SVGRepo_tracerCarrier" stroke-linecap="round" stroke-linejoin="round"></g>
+    <g id="SVGRepo_iconCarrier">
+        <path opacity="0.5" d="M2 17C2 15.1144 2 14.1716 2.58579 13.5858C3.17157 13 4.11438 13 6 13H18C19.8856 13 20.8284 13 21.4142 13.5858C22 14.1716 22 15.1144 22 17C22 18.8856 22 19.8284 21.4142 20.4142C20.8284 21 19.8856 21 18 21H6C4.11438 21 3.17157 21 2.58579 20.4142C2 19.8284 2 18.8856 2 17Z" stroke="#1C274C" stroke-width="1.5"></path>
+        <path opacity="0.5" d="M2 6C2 4.11438 2 3.17157 2.58579 2.58579C3.17157 2 4.11438 2 6 2H18C19.8856 2 20.8284 2 21.4142 2.58579C22 3.17157 22 4.11438 22 6C22 7.88562 22 8.82843 21.4142 9.41421C20.8284 10 19.8856 10 18 10H6C4.11438 10 3.17157 10 2.58579 9.41421C2 8.82843 2 7.88562 2 6Z" stroke="#1C274C" stroke-width="1.5"></path>
+        <path d="M13.5 6L18 6" stroke="#1C274C" stroke-width="1.5" stroke-linecap="round"></path>
+        <path d="M6 7L6 5" stroke="#1C274C" stroke-width="1.5" stroke-linecap="round"></path>
+        <path d="M9 7L9 5" stroke="#1C274C" stroke-width="1.5" stroke-linecap="round"></path>
+        <path d="M13.5 17H18" stroke="#1C274C" stroke-width="1.5" stroke-linecap="round"></path>
+        <path d="M6 18L6 16" stroke="#1C274C" stroke-width="1.5" stroke-linecap="round"></path>
+        <path d="M9 18L9 16" stroke="#1C274C" stroke-width="1.5" stroke-linecap="round"></path>
+    </g>
+</svg>
+{{ end }}
+
+{{ define "logsvg" }}
+<svg width="48" height="48" viewBox="0 0 16 16" xmlns="http://www.w3.org/2000/svg" fill="none">
+    <g id="SVGRepo_bgCarrier" stroke-width="0"></g>
+    <g id="SVGRepo_tracerCarrier" stroke-linecap="round" stroke-linejoin="round"></g>
+    <g id="SVGRepo_iconCarrier">
+        <g fill="#000000">
+            <path d="M5.314 1.256a.75.75 0 01-.07 1.058L3.889 3.5l1.355 1.186a.75.75 0 11-.988 1.128l-2-1.75a.75.75 0 010-1.128l2-1.75a.75.75 0 011.058.07zM7.186 1.256a.75.75 0 00.07 1.058L8.611 3.5 7.256 4.686a.75.75 0 10.988 1.128l2-1.75a.75.75 0 000-1.128l-2-1.75a.75.75 0 00-1.058.07zM2.75 7.5a.75.75 0 000 1.5h10.5a.75.75 0 000-1.5H2.75zM2 11.25a.75.75 0 01.75-.75h10.5a.75.75 0 010 1.5H2.75a.75.75 0 01-.75-.75zM2.75 13.5a.75.75 0 000 1.5h6.5a.75.75 0 000-1.5h-6.5z"></path>
+        </g>
+    </g>
+</svg>
+{{ end }}
