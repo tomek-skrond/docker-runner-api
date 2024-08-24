@@ -60,8 +60,8 @@ func (s *APIServer) Run() {
 
 	r.Handle("/backups", s.JwtAuth(http.HandlerFunc(s.BackupPage))).Methods("GET")
 	r.Handle("/backup", s.JwtAuth(http.HandlerFunc(s.Backup))).Methods("POST")
-	r.Handle("/backup/delete", s.JwtAuth(http.HandlerFunc(s.DeleteBackup))).Methods("POST")
-	r.Handle("/load-backup", s.JwtAuth(http.HandlerFunc(s.LoadBackup))).Methods("POST")
+	r.Handle("/backup/delete", s.JwtAuth(http.HandlerFunc(s.DeleteBackup))).Methods("DELETE")
+	r.Handle("/backup/load", s.JwtAuth(http.HandlerFunc(s.LoadBackup))).Methods("POST")
 
 	r.Handle("/sync", s.JwtAuth(http.HandlerFunc(s.Sync))).Methods("POST")
 
@@ -85,7 +85,7 @@ func (s *APIServer) LoadBackup(w http.ResponseWriter, r *http.Request) {
 	//remove current server files
 	//unzip backup to mcdata/
 	//start the server
-	log.Println("Headers:", r.Header)
+	// log.Println("Headers:", r.Header)
 
 	if fileFlag == "true" {
 
@@ -214,36 +214,40 @@ func (s *APIServer) DownloadDataFromCloud(backupsInCloud []string) error {
 }
 
 func (s *APIServer) Sync(w http.ResponseWriter, r *http.Request) {
-	backupsStringArr, err := GetAvailableBackups("backups/")
-	if err != nil {
-		log.Fatalln(err)
-	}
-
-	if err := s.bucket.CreateGCSBucket(); err != nil {
-		log.Println(err)
-		http.Redirect(w, r, "/backups", http.StatusInternalServerError)
-	}
-
-	// upload all files to cloud
-
-	if err := s.UploadDataToCloud(backupsStringArr); err != nil {
-		log.Fatalln(err)
-		http.Error(w, "Internal server error", http.StatusInternalServerError)
-	}
-
-	backupsInCloudStringArr, err := s.bucket.RetrieveObjectsInBucket(context.Background())
-	if err != nil {
-		log.Fatalln(err)
-		http.Error(w, "Internal server error", http.StatusInternalServerError)
-	}
-
-	if err := s.DownloadDataFromCloud(backupsInCloudStringArr); err != nil {
-		log.Fatalln(err)
-		http.Error(w, "Internal server error", http.StatusInternalServerError)
-	}
-	// upload all files to disk
 
 	http.Redirect(w, r, "/backups", http.StatusSeeOther)
+
+	go func() {
+		backupsStringArr, err := GetAvailableBackups("backups/")
+		if err != nil {
+			log.Fatalln(err)
+		}
+
+		if err := s.bucket.CreateGCSBucket(); err != nil {
+			log.Println(err)
+			http.Redirect(w, r, "/backups", http.StatusInternalServerError)
+		}
+
+		// upload all files to cloud
+
+		if err := s.UploadDataToCloud(backupsStringArr); err != nil {
+			log.Fatalln(err)
+			http.Error(w, "Internal server error", http.StatusInternalServerError)
+		}
+
+		backupsInCloudStringArr, err := s.bucket.RetrieveObjectsInBucket(context.Background())
+		if err != nil {
+			log.Fatalln(err)
+			http.Error(w, "Internal server error", http.StatusInternalServerError)
+		}
+
+		// upload all files to disk
+		if err := s.DownloadDataFromCloud(backupsInCloudStringArr); err != nil {
+			log.Fatalln(err)
+			http.Error(w, "Internal server error", http.StatusInternalServerError)
+		}
+
+	}()
 
 }
 
@@ -343,19 +347,22 @@ func (s *APIServer) Backup(w http.ResponseWriter, r *http.Request) {
 	if backupName == "" {
 		backupName = "server"
 	}
-
-	log.Println("backup initiated")
-	currentTime := time.Now()
-	// Format the time to match the desired format
-	formattedTime := currentTime.Format("20060102_150405")
-
-	fileName := fmt.Sprintf("%s_%s.zip", backupName, formattedTime)
-
-	if err := zipit("mcdata", "backups/"+fileName, false); err != nil {
-		log.Fatalln(err)
-	}
-
+	// Respond immediately
 	http.Redirect(w, r, "/backups", http.StatusSeeOther)
+
+	// Start the backup process in the background
+	go func() {
+		// Perform backup operation here
+		currentTime := time.Now()
+		formattedTime := currentTime.Format("20060102_150405")
+		fileName := fmt.Sprintf("%s_%s.zip", backupName, formattedTime)
+
+		if err := zipit("mcdata", "backups/"+fileName, false); err != nil {
+			log.Println("Error during backup:", err)
+		}
+		log.Println("Backup initiated successfully")
+	}()
+
 }
 
 func (s *APIServer) DeleteBackup(w http.ResponseWriter, r *http.Request) {
@@ -453,14 +460,20 @@ func (s *APIServer) Home(w http.ResponseWriter, r *http.Request) {
 func (s *APIServer) Stop(w http.ResponseWriter, r *http.Request) {
 	// s.WriteTemplate(w, "home.html", nil)
 	http.Redirect(w, r, "/home", http.StatusSeeOther)
-	s.Runner.StopContainer()
+
+	go func() {
+		s.Runner.StopContainer()
+	}()
 	// WriteJSON(w, http.StatusOK, "Stop container accessed")
 }
 
 func (s *APIServer) Start(w http.ResponseWriter, r *http.Request) {
 	// s.WriteTemplate(w, "home.html", nil)
 	http.Redirect(w, r, "/home", http.StatusSeeOther)
-	s.Runner.Containerize()
+
+	go func() {
+		s.Runner.Containerize()
+	}()
 	// WriteJSON(w, http.StatusOK, "Start container accessed")
 	log.Println("container accessed")
 }

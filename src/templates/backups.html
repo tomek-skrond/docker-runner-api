@@ -4,6 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Backup Manager</title>
+    <link rel="icon" type="image/png" sizes="16x16" href="static/favicon.png">
     <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
     <style>
         /* Ensure the page content starts below the fixed navbar */
@@ -60,7 +61,7 @@
             <!-- Backup Loader Card -->
             <div class="flex-1 min-w-[300px] bg-white rounded-lg shadow-lg p-6 relative">
                 <h2 class="text-2xl font-semibold text-gray-800 mb-4">Backup Loader</h2>
-                <form action="/load-backup?file=true" method="POST" enctype="multipart/form-data" class="space-y-4 mb-6">
+                <form action="/backup/load?file=true" method="POST" enctype="multipart/form-data" class="space-y-4 mb-6">
                     <div>
                         <label for="backupfile" class="block text-gray-700 font-medium mb-2">Select a Backup from Disk:</label>
                         <input type="file" name="backupfile" id="backupfile"
@@ -74,7 +75,7 @@
                     </button>
                 </form>
 
-                <form action="/load-backup" method="POST" class="space-y-4">
+                <form action="/backup/load" method="POST" class="space-y-4">
                     <div>
                         <label for="backup" class="block text-gray-700 font-medium mb-2">Select a Backup from Server:</label>
                         <select id="backup" name="backup"
@@ -207,73 +208,73 @@
     </div>
 
     <script>
-document.addEventListener('DOMContentLoaded', function() {
-    const confirmDeleteButton = document.getElementById('confirmDeleteButton');
-    if (confirmDeleteButton) {
-        confirmDeleteButton.addEventListener('click', confirmDelete);
-    }
-});
-
-let isDeleting = false; // Flag to prevent multiple deletions
-
-function openDeleteModal(filename) {
-    document.getElementById('filenameToDelete').value = filename;
-    document.getElementById('deleteBackupModal').classList.remove('hidden');
-}
-
-function closeModal(modalId) {
-    document.getElementById(modalId).classList.add('hidden');
-}
-
-function openModal(modalId) {
-    document.getElementById(modalId).classList.remove('hidden');
-}
-
-function checkFileSelection() {
-    const fileInput = document.getElementById('backupfile');
-    const uploadButton = document.getElementById('uploadButton');
-    // Enable or disable the upload button based on file selection
-    uploadButton.disabled = !fileInput.files.length;
-    uploadButton.classList.toggle('opacity-50', !fileInput.files.length);
-    uploadButton.classList.toggle('cursor-not-allowed', !fileInput.files.length);
-    uploadButton.classList.toggle('bg-gray-500', !fileInput.files.length);
-    uploadButton.classList.toggle('bg-blue-500', fileInput.files.length);
-}
-
-function confirmDelete() {
-    if (isDeleting) return; // Prevent multiple deletions
-    isDeleting = true; // Set flag to true
-
-    const filename = document.getElementById('filenameToDelete').value;
-    if (filename) {
-        fetch(`/backup/delete?delete=${encodeURIComponent(filename)}`, {
-            method: 'POST',
-            headers: {
-                'Authorization': `Bearer ${getTokenFromClient()}`, // Add Authorization header if needed
-                'Content-Type': 'application/json'
+        document.addEventListener('DOMContentLoaded', function() {
+            const confirmDeleteButton = document.getElementById('confirmDeleteButton');
+            if (confirmDeleteButton) {
+                confirmDeleteButton.addEventListener('click', confirmDelete);
             }
-        }).then(response => {
-            if (response.ok) {
-                location.reload(); // Reload the page to reflect the deletion
-            } else {
-                alert('Error deleting the backup.');
-            }
-        }).catch(error => {
-            alert('Error deleting the backup.');
-        }).finally(() => {
-            isDeleting = false; // Reset flag after request completes
-            closeModal('deleteBackupModal'); // Close modal regardless of success
         });
-    } else {
-        isDeleting = false; // Reset flag if filename is not present
-        closeModal('deleteBackupModal'); // Close modal regardless
-    }
-}
 
-function getTokenFromClient() {
-    const cookie = document.cookie.split('; ').find(row => row.startsWith('token='));
-    return cookie ? cookie.split('=')[1] : '';
-}
+        let isDeleting = false; // Flag to prevent multiple deletions
+
+        function openDeleteModal(filename) {
+            document.getElementById('filenameToDelete').value = filename;
+            document.getElementById('deleteBackupModal').classList.remove('hidden');
+        }
+
+        function closeModal(modalId) {
+            document.getElementById(modalId).classList.add('hidden');
+        }
+
+        function openModal(modalId) {
+            document.getElementById(modalId).classList.remove('hidden');
+        }
+
+        function checkFileSelection() {
+            const fileInput = document.getElementById('backupfile');
+            const uploadButton = document.getElementById('uploadButton');
+            // Enable or disable the upload button based on file selection
+            uploadButton.disabled = !fileInput.files.length;
+            uploadButton.classList.toggle('opacity-50', !fileInput.files.length);
+            uploadButton.classList.toggle('cursor-not-allowed', !fileInput.files.length);
+            uploadButton.classList.toggle('bg-gray-500', !fileInput.files.length);
+            uploadButton.classList.toggle('bg-blue-500', fileInput.files.length);
+        }
+
+        function confirmDelete() {
+            if (isDeleting) return; // Prevent multiple deletions
+            isDeleting = true; // Set flag to true
+
+            const filename = document.getElementById('filenameToDelete').value;
+            if (filename) {
+                fetch(`/backup/delete?delete=${encodeURIComponent(filename)}`, {
+                    method: 'DELETE',
+                    headers: {
+                        'Authorization': `Bearer ${getTokenFromClient()}`, // Add Authorization header if needed
+                        'Content-Type': 'application/json'
+                    }
+                }).then(response => {
+                    if (response.ok) {
+                        location.reload(); // Reload the page to reflect the deletion
+                    } else {
+                        alert('Error deleting the backup.');
+                    }
+                }).catch(error => {
+                    alert('Error deleting the backup.');
+                }).finally(() => {
+                    isDeleting = false; // Reset flag after request completes
+                    closeModal('deleteBackupModal'); // Close modal regardless of success
+                });
+            } else {
+                isDeleting = false; // Reset flag if filename is not present
+                closeModal('deleteBackupModal'); // Close modal regardless
+            }
+        }
+
+        function getTokenFromClient() {
+            const cookie = document.cookie.split('; ').find(row => row.startsWith('token='));
+            return cookie ? cookie.split('=')[1] : '';
+        }
 
 
     </script>
