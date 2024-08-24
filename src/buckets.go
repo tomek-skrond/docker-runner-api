@@ -127,3 +127,69 @@ func (b *Bucket) ObjectExists(objectPath string) (bool, error) {
 	}
 	return true, nil
 }
+
+func (b *Bucket) RetrieveObjectsInBucket(ctx context.Context) ([]string, error) {
+	client, err := storage.NewClient(ctx)
+	if err != nil {
+		return []string{}, err
+	}
+	defer client.Close()
+
+	bucketName := b.Name
+	bucket := client.Bucket(bucketName)
+	query := &storage.Query{}
+
+	var objects []string
+	it := bucket.Objects(ctx, query)
+	for {
+		objAttrs, err := it.Next()
+		if err == iterator.Done {
+			break
+		}
+		if err != nil {
+			log.Fatalf("error listing objects %v\n", err)
+			return []string{}, err
+		}
+		objects = append(objects, objAttrs.Name)
+	}
+
+	return objects, nil
+}
+
+func (b *Bucket) DownloadDataFromBucket(ctx context.Context, objectName string) error {
+	client, err := storage.NewClient(ctx)
+	if err != nil {
+		log.Fatalln(err)
+		return err
+	}
+	defer client.Close()
+
+	bucketName := b.Name
+	localBackupsPath := "backups"
+
+	file, err := os.Create(fmt.Sprintf("backups/%s", objectName))
+	if err != nil {
+		log.Fatalln("failed to create file", err)
+		return err
+	}
+	defer file.Close()
+
+	bucket := client.Bucket(bucketName)
+	object := bucket.Object(objectName)
+
+	reader, err := object.NewReader(ctx)
+	if err != nil {
+		log.Fatalln("failed to create object reader", err)
+		return err
+	}
+	defer reader.Close()
+
+	if _, err := io.Copy(file, reader); err != nil {
+		log.Fatalf("Failed to copy object content to file: %v\n", err)
+		return err
+	}
+
+	fmt.Printf("Object %s downloaded to %s\n", objectName, localBackupsPath)
+
+	return nil
+}

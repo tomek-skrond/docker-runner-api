@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"fmt"
 	"html/template"
 	"log"
@@ -101,6 +102,50 @@ func (s *APIServer) LoadBackup(w http.ResponseWriter, r *http.Request) {
 	http.Redirect(w, r, "/backups", http.StatusSeeOther)
 }
 
+func (s *APIServer) UploadDataToCloud(backupsStrArr []string) error {
+	for _, backup := range backupsStrArr {
+		objectPath := fmt.Sprintf("backups/%s", backup)
+
+		// Check if the object already exists in GCS
+		exists, err := s.bucket.ObjectExists(backup)
+		if err != nil {
+			log.Printf("Error checking if object exists in GCS: %v", err)
+			return err
+		}
+		if exists {
+			log.Printf("Object %s already exists in GCS. Skipping upload.", objectPath)
+			continue
+		}
+
+		if err := s.bucket.UploadFileToGCS(objectPath); err != nil {
+			log.Fatalln(err)
+			return err
+		}
+	}
+	fmt.Println("uploading data to cloud successful")
+
+	return nil
+}
+
+func (s *APIServer) DownloadDataFromCloud(backupsInCloud []string) error {
+	backupsOnDisk, err := GetAvailableBackups("backups/")
+	if err != nil {
+		log.Fatalln(err)
+		return err
+	}
+	for _, backup := range backupsInCloud {
+		if !contains(backupsOnDisk, backup) {
+			log.Printf("downloading backup %s from cloud", backup)
+			if err := s.bucket.DownloadDataFromBucket(context.Background(), backup); err != nil {
+				log.Fatalln(err)
+				return err
+			}
+		}
+	}
+
+	return nil
+}
+
 func (s *APIServer) Sync(w http.ResponseWriter, r *http.Request) {
 	backupsStringArr, err := GetAvailableBackups("backups/")
 	if err != nil {
@@ -112,27 +157,25 @@ func (s *APIServer) Sync(w http.ResponseWriter, r *http.Request) {
 		http.Redirect(w, r, "/backups", http.StatusInternalServerError)
 	}
 
-	for _, backup := range backupsStringArr {
-		objectPath := fmt.Sprintf("backups/%s", backup)
+	// upload all files to cloud
 
-		// Check if the object already exists in GCS
-		exists, err := s.bucket.ObjectExists(backup)
-		if err != nil {
-			log.Printf("Error checking if object exists in GCS: %v", err)
-			http.Error(w, "Internal server error", http.StatusInternalServerError)
-			return
-		}
-		if exists {
-			log.Printf("Object %s already exists in GCS. Skipping upload.", objectPath)
-			continue
-		}
-
-		if err := s.bucket.UploadFileToGCS(objectPath); err != nil {
-			log.Fatalln(err)
-			http.Error(w, "Internal server error", http.StatusInternalServerError)
-		}
+	if err := s.UploadDataToCloud(backupsStringArr); err != nil {
+		log.Fatalln(err)
+		http.Error(w, "Internal server error", http.StatusInternalServerError)
 	}
-	fmt.Println("uploading data to cloud successful")
+
+	backupsInCloudStringArr, err := s.bucket.RetrieveObjectsInBucket(context.Background())
+	if err != nil {
+		log.Fatalln(err)
+		http.Error(w, "Internal server error", http.StatusInternalServerError)
+	}
+
+	if err := s.DownloadDataFromCloud(backupsInCloudStringArr); err != nil {
+		log.Fatalln(err)
+		http.Error(w, "Internal server error", http.StatusInternalServerError)
+	}
+	// upload all files to disk
+
 	http.Redirect(w, r, "/backups", http.StatusSeeOther)
 
 }
@@ -261,8 +304,14 @@ func (s *APIServer) BackupPage(w http.ResponseWriter, r *http.Request) {
 		log.Fatalln(err)
 	}
 
+	cloudBackupsArr, err := s.bucket.RetrieveObjectsInBucket(context.Background())
+	if err != nil {
+		log.Fatalln("unable to download object data from cloud", err)
+	}
+
 	backups := BackupTemplateData{
-		Backups: backupsStringArr,
+		Backups:      backupsStringArr,
+		CloudBackups: cloudBackupsArr,
 	}
 
 	t.Execute(w, backups)

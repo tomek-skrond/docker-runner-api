@@ -13,7 +13,8 @@ import (
 )
 
 type BackupTemplateData struct {
-	Backups []string
+	Backups      []string
+	CloudBackups []string
 }
 
 func GetAvailableBackups(backupPath string) ([]string, error) {
