@@ -32,9 +32,18 @@
             {{ end }}
         </ul>
 
+
+        <form action="/load-backup?file=true" method="POST" enctype="multipart/form-data" class="mb-4 flex flex-wrap justify-center">
+            <label for="backupfile" class="block font-medium text-gray-700 mb-2">Select a Backup from Disk:</label>
+            <input type="file" name="backupfile" id="backupfile" class="block w-full p-2 border rounded mb-4" onchange="checkFileSelection()"/>
+            <button id="uploadButton" type="submit" class="bg-gray-500 text-white font-bold py-2 px-4 rounded opacity-50 cursor-not-allowed" disabled>
+                Upload Backup File
+            </button>
+        </form>
+
         <!-- Load Backup Interface -->
         <form action="/load-backup" method="POST" class="mb-4 flex flex-wrap justify-center">
-            <label for="backup" class="block font-medium text-gray-700 mb-2">Select a Backup to Load:</label>
+            <label for="backup" class="flex justify-center font-medium text-gray-700 mb-2">Select a Backup from Server:</label>
             <select id="backup" name="backup" class="block w-full p-2 border rounded mb-4">
                 {{ range .Backups }}
                 <option value="{{ . }}">{{ . }}</option>
@@ -44,12 +53,6 @@
             </select>
             <button type="submit" class="bg-green-500 hover:bg-green-600 text-white font-bold py-2 px-4 rounded">
                 Load Backup
-            </button>
-        </form>
-
-        <form action="/load-backup?file=true" method="POST" class="mb-4 flex flex-wrap justify-center">
-            <button type="submit" class="bg-gray-500 hover:bg-gray-600 text-white font-bold py-2 px-4 rounded">
-                Choose File
             </button>
         </form>
 
@@ -73,3 +76,21 @@
 </body>
 
 </html>
+
+
+<script>
+    function checkFileSelection() {
+        const fileInput = document.getElementById('backupfile');
+        const uploadButton = document.getElementById('uploadButton');
+    
+        if (fileInput.files.length > 0) {
+            uploadButton.disabled = false;
+            uploadButton.classList.remove('opacity-50', 'cursor-not-allowed');
+            uploadButton.classList.add('hover:bg-gray-600');
+        } else {
+            uploadButton.disabled = true;
+            uploadButton.classList.add('opacity-50', 'cursor-not-allowed');
+            uploadButton.classList.remove('hover:bg-gray-600');
+        }
+    }
+    </script>

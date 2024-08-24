@@ -4,7 +4,9 @@ import (
 	"context"
 	"fmt"
 	"html/template"
+	"io"
 	"log"
+	"mime/multipart"
 	"net/http"
 	"os"
 	"path/filepath"
@@ -74,16 +76,43 @@ func (s *APIServer) LoadBackup(w http.ResponseWriter, r *http.Request) {
 
 	s.Runner.StopContainer()
 	backupFile := r.FormValue("backup")
-	fmt.Println(backupFile)
+	fileFlag := r.URL.Query().Get("file")
+
 	// shutdown server
 	// Format the time to match the desired format
 	//backup current state
 	//remove current server files
 	//unzip backup to mcdata/
 	//start the server
-	if err := s.LoadBackupFromDisk(backupFile); err != nil {
-		log.Fatalln(err)
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+	log.Println("Headers:", r.Header)
+
+	if fileFlag == "true" {
+
+		r.Header.Set("Content-Type", "multipart/form-data")
+		// Set the maximum file size to 1 GB
+		r.Body = http.MaxBytesReader(w, r.Body, 1<<30) // 1 GB limit
+
+		// Retrieve the file from the form
+		file, fileHeader, err := r.FormFile("backupfile")
+		if err != nil {
+			log.Println(err)
+			http.Error(w, "Error processing file upload", http.StatusInternalServerError)
+			return
+		}
+		defer file.Close()
+
+		//todo: input validation for file name
+		fileName := fileHeader.Filename
+		if err := s.LoadBackupChooseFile(file, fileName); err != nil {
+			log.Fatalln(err)
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+		}
+	} else {
+		if err := s.LoadBackupFromDisk(backupFile); err != nil {
+			log.Fatalln(err)
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
 	}
 
 	http.Redirect(w, r, "/backups", http.StatusSeeOther)
@@ -120,6 +149,22 @@ func (s *APIServer) LoadBackupFromDisk(backupFile string) error {
 	return nil
 }
 
+func (s *APIServer) LoadBackupChooseFile(file multipart.File, backupName string) error {
+
+	// You could save the file or process it further here
+	// For example, save the file to disk
+	out, err := os.Create(fmt.Sprintf("backups/%s", backupName))
+	if err != nil {
+		return err
+	}
+	defer out.Close()
+
+	_, err = io.Copy(out, file)
+	return err
+
+	// log.Printf("File uploaded successfully")
+	// return nil
+}
 func (s *APIServer) UploadDataToCloud(backupsStrArr []string) error {
 	for _, backup := range backupsStrArr {
 		objectPath := fmt.Sprintf("backups/%s", backup)
