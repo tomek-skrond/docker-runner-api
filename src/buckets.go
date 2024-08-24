@@ -129,28 +129,35 @@ func (b *Bucket) ObjectExists(objectPath string) (bool, error) {
 }
 
 func (b *Bucket) RetrieveObjectsInBucket(ctx context.Context) ([]string, error) {
+	log.Println("creating client")
 	client, err := storage.NewClient(ctx)
 	if err != nil {
 		return []string{}, err
 	}
 	defer client.Close()
 
-	bucketName := b.Name
-	bucket := client.Bucket(bucketName)
-	query := &storage.Query{}
+	objects := []string{}
 
-	var objects []string
-	it := bucket.Objects(ctx, query)
-	for {
-		objAttrs, err := it.Next()
-		if err == iterator.Done {
-			break
+	log.Println("checking if bucket exists")
+	if b.BucketExists(ctx, client) {
+
+		bucketName := b.Name
+		bucket := client.Bucket(bucketName)
+		query := &storage.Query{}
+
+		it := bucket.Objects(ctx, query)
+		for {
+			objAttrs, err := it.Next()
+			if err == iterator.Done {
+				break
+			}
+			if err != nil {
+				log.Fatalf("error listing objects %v\n", err)
+				//return nil error to mitigate crash if bucket does not exist
+				return []string{}, nil
+			}
+			objects = append(objects, objAttrs.Name)
 		}
-		if err != nil {
-			log.Fatalf("error listing objects %v\n", err)
-			return []string{}, err
-		}
-		objects = append(objects, objAttrs.Name)
 	}
 
 	return objects, nil
@@ -192,4 +199,19 @@ func (b *Bucket) DownloadDataFromBucket(ctx context.Context, objectName string) 
 	fmt.Printf("Object %s downloaded to %s\n", objectName, localBackupsPath)
 
 	return nil
+}
+
+// bucketExists checks if a bucket exists.
+func (b *Bucket) BucketExists(ctx context.Context, client *storage.Client) bool {
+	bucketName := b.Name
+	bucket := client.Bucket(bucketName)
+	_, err := bucket.Attrs(ctx)
+	if err != nil {
+		if storage.ErrBucketNotExist == err {
+			return false
+		}
+		log.Printf("Error checking bucket existence: %v", err)
+		return false
+	}
+	return true
 }

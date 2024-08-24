@@ -107,6 +107,7 @@ func (s *APIServer) UploadDataToCloud(backupsStrArr []string) error {
 		objectPath := fmt.Sprintf("backups/%s", backup)
 
 		// Check if the object already exists in GCS
+		log.Println("check if object exists", backup)
 		exists, err := s.bucket.ObjectExists(backup)
 		if err != nil {
 			log.Printf("Error checking if object exists in GCS: %v", err)
@@ -116,7 +117,7 @@ func (s *APIServer) UploadDataToCloud(backupsStrArr []string) error {
 			log.Printf("Object %s already exists in GCS. Skipping upload.", objectPath)
 			continue
 		}
-
+		log.Printf("uploading file %s to GCS\n", backup)
 		if err := s.bucket.UploadFileToGCS(objectPath); err != nil {
 			log.Fatalln(err)
 			return err
@@ -128,6 +129,7 @@ func (s *APIServer) UploadDataToCloud(backupsStrArr []string) error {
 }
 
 func (s *APIServer) DownloadDataFromCloud(backupsInCloud []string) error {
+	log.Println("getting available backups from disk")
 	backupsOnDisk, err := GetAvailableBackups("backups/")
 	if err != nil {
 		log.Fatalln(err)
@@ -142,6 +144,7 @@ func (s *APIServer) DownloadDataFromCloud(backupsInCloud []string) error {
 			}
 		}
 	}
+	fmt.Println("downloading data to disk successful")
 
 	return nil
 }
