@@ -24,7 +24,7 @@ jobs:
         go-version: '1.23'
     
     - name: build
-      run: cd ./src/ && go build -v ./... -o mcmgmt
+      run: cd ./src/ && go build -o mcmgmt
     
     - uses: rymndhng/release-on-push-action@master
       with:
