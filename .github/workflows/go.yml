@@ -36,7 +36,7 @@ jobs:
     - name: Build Go Project
       run: |
         cd ./src/
-        env GOOS=${{ matrix.platform }} GOARCH=${{ matrix.arch }} go build -o mcmgmt
+        GOOS=${{ matrix.platform }} GOARCH=${{ matrix.arch }} go build -o mcmgmt
     
     - name: Prepare Release Assets
       run: |
