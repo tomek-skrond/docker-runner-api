@@ -15,6 +15,16 @@ import (
 
 func main() {
 
+	// create backups directory
+
+	doesExist, _ := exists("backups")
+	if !doesExist {
+		if err := os.Mkdir("backups", os.FileMode(0755)); err != nil {
+			log.Fatalln("cannot create directory", err)
+			panic(err)
+		}
+	}
+
 	//init server
 	bindPath, err := os.Getwd()
 	if err != nil {
