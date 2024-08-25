@@ -13,6 +13,8 @@ jobs:
 
   build:
     runs-on: ubuntu-latest
+    env:
+      GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
     steps:
     - uses: actions/checkout@v3
 
@@ -24,3 +26,7 @@ jobs:
     - name: build
       run: cd ./src/ && go build -v ./... -o mcmgmt
     
+    - uses: rymndhng/release-on-push-action@master
+      with:
+        bump_version_scheme: minor
+        tag_prefix: 'v'
