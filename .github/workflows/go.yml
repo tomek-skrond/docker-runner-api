@@ -39,11 +39,10 @@ jobs:
       id: create_release
       uses: softprops/action-gh-release@v1
       with:
-        tag_name: 'v${{ github.sha }}'
         files: ./src/mcmgmt-release.tar.gz
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-    
+        
     - name: Bump Version and Push Tag
       uses: rymndhng/release-on-push-action@master
       with:
