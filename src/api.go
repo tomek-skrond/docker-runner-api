@@ -218,6 +218,11 @@ func (s *APIServer) Sync(w http.ResponseWriter, r *http.Request) {
 	http.Redirect(w, r, "/backups", http.StatusSeeOther)
 
 	go func() {
+
+		if s.bucket.projectID == "" || s.bucket.Name == "" {
+			return
+		}
+
 		backupsStringArr, err := GetAvailableBackups("backups/")
 		if err != nil {
 			log.Fatalln(err)
