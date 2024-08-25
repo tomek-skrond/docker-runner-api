@@ -2,9 +2,8 @@ name: Go Build and Release
 
 on:
   push:
-    branches: [ "master" ]
-  pull_request:
-    branches: [ "master" ]
+    tags:
+      - '*'  # Triggers on all tag pushes
 
 jobs:
   build:
