@@ -130,12 +130,12 @@ func (r *ContainerRunner) StartContainer(resp container.CreateResponse) error {
 	return r.Client.ContainerStart(r.Context, resp.ID, r.StartOpts)
 }
 
-func (r *ContainerRunner) Containerize() {
+func (r *ContainerRunner) Containerize() error {
 
 	if err := r.InitializeClient(); err != nil {
 		log.Printf("init client error")
 		log.Printf("Error initializing client %s\n", err)
-		return
+		return err
 	}
 	log.Printf("initialized client")
 
@@ -143,33 +143,35 @@ func (r *ContainerRunner) Containerize() {
 	if err != nil {
 		log.Println(out)
 		log.Printf("Error pulling image %s\n", err)
-		return
+		return err
 	}
 
 	netresp, err := r.CreateNetwork()
 	if err != nil {
 		log.Printf("Error creating network %s\n", err)
-		return
+		return err
 	}
 	fmt.Printf("Created network with name %v and ID: %v\n", r.NetworkName, netresp.ID)
 
 	resp, err := r.CreateContainer()
 	if err != nil {
 		log.Printf("Error creating container %s\n", err)
-		return
+		return err
 	}
 
 	if err := r.StartContainer(resp); err != nil {
 		log.Printf("Error starting container %s\n", err)
-		return
+		return err
 	}
 	log.Printf("ID of created container: %s\n", resp.ID)
 
+	return nil
 }
 
-func (r *ContainerRunner) StopContainer() {
+func (r *ContainerRunner) StopContainer() error {
 	if err := r.InitializeClient(); err != nil {
 		log.Printf("Error initializing client %s\n", err)
+		return err
 	}
 
 	noWaitTimeout := 0
@@ -182,25 +184,25 @@ func (r *ContainerRunner) StopContainer() {
 	containers, err := r.Client.ContainerList(r.Context, types.ContainerListOptions{Filters: containerFilters})
 	if err != nil {
 		log.Printf("Error listing containers %s\n", err)
-		return
+		return err
 	}
 	networks, err := r.Client.NetworkList(r.Context, types.NetworkListOptions{Filters: networkFilters})
 
 	if err != nil {
 		log.Printf("Error listing networks %s\n", err)
-		return
+		return err
 	}
 
 	if len(containers) == 0 && len(networks) == 0 {
 		log.Printf("Container does not exist\n")
-		return
+		return err
 	}
 
 	if len(containers) == 1 {
 		log.Printf("container ID found: %s", containers[0].ID)
 		if err := r.Client.ContainerStop(r.Context, r.ContainerName, container.StopOptions{Timeout: &noWaitTimeout}); err != nil {
 			log.Printf("Error stopping container %s\n", err)
-			return
+			return err
 		}
 		log.Printf("Success stopping container %s\n", r.ContainerName)
 
@@ -210,9 +212,10 @@ func (r *ContainerRunner) StopContainer() {
 		log.Printf("network ID found: %s", networks[0].ID)
 		if err := r.Client.NetworkRemove(r.Context, r.NetworkName); err != nil {
 			log.Printf("Error removing network %s\n", err)
-			return
+			return err
 		}
 		log.Printf("Success removing network %s\n", r.NetworkName)
 	}
+	return nil
 
 }
