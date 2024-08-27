@@ -16,6 +16,7 @@ import (
 func main() {
 	// server params
 	listenPort := ":7777"
+	backupPath := "backups"
 
 	// container params
 	img := "itzg/minecraft-server"
@@ -27,7 +28,6 @@ func main() {
 	projectID := os.Getenv("PROJECT_ID")
 
 	// create backups directory
-
 	doesExistBackups, _ := exists("backups")
 	if !doesExistBackups {
 		if err := os.Mkdir("backups", os.FileMode(0755)); err != nil {
@@ -35,6 +35,7 @@ func main() {
 			panic(err)
 		}
 	}
+
 	doesExistMcData, _ := exists("mcdata")
 	if !doesExistMcData {
 		if err := os.Mkdir("mcdata", os.FileMode(0755)); err != nil {
@@ -62,8 +63,10 @@ func main() {
 		log.Fatalln(err)
 	}
 
+	backupSvc := NewBackupService(bucket, backupPath)
+
 	// create API server instance
-	server := NewAPIServer(listenPort, logPath, loginSvc, runner, bucket, secret)
+	server := NewAPIServer(listenPort, logPath, loginSvc, runner, backupSvc, secret)
 	server.Run()
 }
 

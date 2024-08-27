@@ -2,11 +2,14 @@ package main
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"io"
 	"log"
+	"mime/multipart"
 	"os"
 	"path/filepath"
+	"time"
 
 	storage "cloud.google.com/go/storage"
 	"google.golang.org/api/iterator"
@@ -24,6 +27,18 @@ func NewBucket(bucketName string, projectID string) (*Bucket, error) {
 		projectID: projectID,
 		isPrivate: true,
 	}, nil
+}
+
+type BackupService struct {
+	bucket     *Bucket
+	backupPath string
+}
+
+func NewBackupService(bucket *Bucket, backupPath string) *BackupService {
+	return &BackupService{
+		bucket:     bucket,
+		backupPath: backupPath,
+	}
 }
 
 // ////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -214,4 +229,171 @@ func (b *Bucket) BucketExists(ctx context.Context, client *storage.Client) bool 
 		return false
 	}
 	return true
+}
+
+func (bs *BackupService) Sync() error {
+	if bs.bucket.projectID == "" || bs.bucket.Name == "" {
+		return errors.New("synchronization bucket information not complete")
+	}
+
+	backupsStringArr, err := GetAvailableBackups("backups/")
+	if err != nil {
+		return err
+	}
+
+	if err := bs.bucket.CreateGCSBucket(); err != nil {
+		return err
+	}
+
+	// upload all files to cloud
+	if err := bs.UploadDataToCloud(backupsStringArr); err != nil {
+		return err
+	}
+
+	backupsInCloudStringArr, err := bs.bucket.RetrieveObjectsInBucket(context.Background())
+	if err != nil {
+		return err
+
+	}
+
+	// upload all files to disk
+	if err := bs.DownloadDataFromCloud(backupsInCloudStringArr); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (bs *BackupService) UploadDataToCloud(backupsStrArr []string) error {
+	for _, backup := range backupsStrArr {
+		objectPath := fmt.Sprintf("backups/%s", backup)
+
+		// Check if the object already exists in GCS
+		log.Println("check if object exists", backup)
+		exists, err := bs.bucket.ObjectExists(backup)
+		if err != nil {
+			log.Printf("Error checking if object exists in GCS: %v", err)
+			return err
+		}
+		if exists {
+			log.Printf("Object %s already exists in GCS. Skipping upload.", objectPath)
+			continue
+		}
+		log.Printf("uploading file %s to GCS\n", backup)
+		if err := bs.bucket.UploadFileToGCS(objectPath); err != nil {
+			log.Fatalln(err)
+			return err
+		}
+	}
+	fmt.Println("uploading data to cloud successful")
+
+	return nil
+}
+
+func (bs *BackupService) DownloadDataFromCloud(backupsInCloud []string) error {
+	log.Println("getting available backups from disk")
+	backupsOnDisk, err := GetAvailableBackups("backups/")
+	if err != nil {
+		log.Fatalln(err)
+		return err
+	}
+	for _, backup := range backupsInCloud {
+		if !contains(backupsOnDisk, backup) {
+			log.Printf("downloading backup %s from cloud", backup)
+			if err := bs.bucket.DownloadDataFromBucket(context.Background(), backup); err != nil {
+				log.Fatalln(err)
+				return err
+			}
+		}
+	}
+	fmt.Println("downloading data to disk successful")
+
+	return nil
+}
+
+func (bs *BackupService) UploadBackupMultipart(progressReader *ProgressReader) error {
+	// Create a temporary file to store the uploaded data
+	tempFile, err := os.CreateTemp("", "backup-*")
+	if err != nil {
+		return err
+	}
+	defer tempFile.Close()
+
+	// Write the uploaded file data to the temp file, logging progress
+	if _, err := io.Copy(tempFile, progressReader); err != nil {
+		return err
+	}
+
+	// Call your method to handle the file
+	if err := bs.LoadBackupChooseFile(tempFile, tempFile.Name()); err != nil {
+		return err
+	}
+	return nil
+}
+
+func (bs *BackupService) LoadBackupChooseFile(file multipart.File, backupName string) error {
+
+	// You could save the file or process it further here
+	// For example, save the file to disk
+	out, err := os.Create(fmt.Sprintf("%s", backupName))
+	if err != nil {
+		return err
+	}
+	defer out.Close()
+
+	_, err = io.Copy(out, file)
+	return err
+
+	// log.Printf("File uploaded successfully")
+	// return nil
+}
+
+func (bs *BackupService) LoadBackupFromDisk(backupFile string) error {
+
+	log.Println("loading new backup initiated")
+	currentTime := time.Now()
+
+	formattedTime := currentTime.Format("20060102_150405")
+
+	fileName := fmt.Sprintf("%s_%s.zip", "mcdata", formattedTime)
+
+	if err := zipit("mcdata", "backups/"+fileName, false); err != nil {
+		log.Fatalln(err)
+		return err
+	}
+
+	if err := removeAllFilesInDir("mcdata"); err != nil {
+		log.Fatalln(err)
+		return err
+
+	}
+
+	if err := unzip(fmt.Sprintf("backups/%s", backupFile), "mcdata"); err != nil {
+		log.Fatalln(err)
+		return err
+
+	}
+
+	return nil
+}
+
+func (bs *BackupService) GetBackups() ([]string, error) {
+	backupPath := bs.backupPath
+	backups, err := GetAvailableBackups(backupPath)
+	if err != nil {
+		return nil, err
+	}
+	return backups, nil
+}
+
+func (bs *BackupService) Backup(backupName string) error {
+	// Perform backup operation here
+	currentTime := time.Now()
+	formattedTime := currentTime.Format("20060102_150405")
+	fileName := fmt.Sprintf("%s_%s.zip", backupName, formattedTime)
+
+	if err := zipit("mcdata", "backups/"+fileName, false); err != nil {
+		return err
+	}
+	return nil
 }
