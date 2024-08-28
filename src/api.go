@@ -92,7 +92,7 @@ func (s *APIServer) LoadBackupHandler(w http.ResponseWriter, r *http.Request) {
 	if !doesExist {
 		if err := os.Mkdir("backups", os.FileMode(0755)); err != nil {
 			log.Fatalln("cannot create directory", err)
-			panic(err)
+			return
 		}
 	}
 
@@ -119,6 +119,7 @@ func (s *APIServer) LoadBackupHandler(w http.ResponseWriter, r *http.Request) {
 
 		if err := s.backupService.UploadBackupMultipart(progressReader); err != nil {
 			WriteJSON(w, messageToJSON(http.StatusInternalServerError, "backup multipart failure", nil))
+			return
 		}
 
 	} else {

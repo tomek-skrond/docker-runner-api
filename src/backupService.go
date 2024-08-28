@@ -167,7 +167,7 @@ func (b *Bucket) RetrieveObjectsInBucket(ctx context.Context) ([]string, error) 
 				break
 			}
 			if err != nil {
-				log.Fatalf("error listing objects %v\n", err)
+				log.Printf("error listing objects %v\n", err)
 				//return nil error to mitigate crash if bucket does not exist
 				return []string{}, nil
 			}
@@ -181,7 +181,7 @@ func (b *Bucket) RetrieveObjectsInBucket(ctx context.Context) ([]string, error) 
 func (b *Bucket) DownloadDataFromBucket(ctx context.Context, objectName string) error {
 	client, err := storage.NewClient(ctx)
 	if err != nil {
-		log.Fatalln(err)
+		log.Println(err)
 		return err
 	}
 	defer client.Close()
@@ -191,7 +191,7 @@ func (b *Bucket) DownloadDataFromBucket(ctx context.Context, objectName string) 
 
 	file, err := os.Create(fmt.Sprintf("backups/%s", objectName))
 	if err != nil {
-		log.Fatalln("failed to create file", err)
+		log.Println("failed to create file", err)
 		return err
 	}
 	defer file.Close()
@@ -201,13 +201,13 @@ func (b *Bucket) DownloadDataFromBucket(ctx context.Context, objectName string) 
 
 	reader, err := object.NewReader(ctx)
 	if err != nil {
-		log.Fatalln("failed to create object reader", err)
+		log.Println("failed to create object reader", err)
 		return err
 	}
 	defer reader.Close()
 
 	if _, err := io.Copy(file, reader); err != nil {
-		log.Fatalf("Failed to copy object content to file: %v\n", err)
+		log.Printf("Failed to copy object content to file: %v\n", err)
 		return err
 	}
 
@@ -281,7 +281,7 @@ func (bs *BackupService) UploadDataToCloud(backupsStrArr []string) error {
 		}
 		log.Printf("uploading file %s to GCS\n", backup)
 		if err := bs.bucket.UploadFileToGCS(objectPath); err != nil {
-			log.Fatalln(err)
+			log.Println(err)
 			return err
 		}
 	}
@@ -294,14 +294,14 @@ func (bs *BackupService) DownloadDataFromCloud(backupsInCloud []string) error {
 	log.Println("getting available backups from disk")
 	backupsOnDisk, err := GetAvailableBackups("backups/")
 	if err != nil {
-		log.Fatalln(err)
+		log.Println(err)
 		return err
 	}
 	for _, backup := range backupsInCloud {
 		if !contains(backupsOnDisk, backup) {
 			log.Printf("downloading backup %s from cloud", backup)
 			if err := bs.bucket.DownloadDataFromBucket(context.Background(), backup); err != nil {
-				log.Fatalln(err)
+				log.Println(err)
 				return err
 			}
 		}
@@ -358,20 +358,18 @@ func (bs *BackupService) LoadBackupFromDisk(backupFile string) error {
 	fileName := fmt.Sprintf("%s_%s.zip", "mcdata", formattedTime)
 
 	if err := zipit("mcdata", "backups/"+fileName, false); err != nil {
-		log.Fatalln(err)
+		log.Println(err)
 		return err
 	}
 
 	if err := removeAllFilesInDir("mcdata"); err != nil {
-		log.Fatalln(err)
+		log.Println(err)
 		return err
-
 	}
 
 	if err := unzip(fmt.Sprintf("backups/%s", backupFile), "mcdata"); err != nil {
-		log.Fatalln(err)
+		log.Println(err)
 		return err
-
 	}
 
 	return nil
