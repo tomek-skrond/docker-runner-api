@@ -80,7 +80,7 @@ func InitBucket(bucketName, projectID string) (*Bucket, error) {
 	return bucket, nil
 }
 
-func InitRunner(containerImage, containerName, bindPath string) *ContainerRunner {
+func InitRunner(containerImage, containerName, bindPath string) *ContainerService {
 	img := containerImage
 	cn := containerName
 

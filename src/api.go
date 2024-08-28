@@ -34,24 +34,24 @@ type ServerConfig struct {
 
 type APIServer struct {
 	ServerConfig
-	runner        *ContainerRunner
-	backupService *BackupService
-	loginService  *LoginService
-	InfoLogger    *log.Logger
-	ErrorLogger   *log.Logger
-	jwtSecret     []byte
+	containerService *ContainerService
+	backupService    *BackupService
+	loginService     *LoginService
+	InfoLogger       *log.Logger
+	ErrorLogger      *log.Logger
+	jwtSecret        []byte
 }
 
-func NewAPIServer(lp string, logsPath string, loginSvc *LoginService, r *ContainerRunner, b *BackupService, secret string) *APIServer {
+func NewAPIServer(lp string, logsPath string, loginSvc *LoginService, r *ContainerService, b *BackupService, secret string) *APIServer {
 	return &APIServer{
 		ServerConfig: ServerConfig{
 			ListenPort: lp,
 			LogsPath:   logsPath,
 		},
-		loginService:  loginSvc,
-		runner:        r,
-		backupService: b,
-		jwtSecret:     []byte(secret),
+		loginService:     loginSvc,
+		containerService: r,
+		backupService:    b,
+		jwtSecret:        []byte(secret),
 	}
 }
 
@@ -97,7 +97,7 @@ func (s *APIServer) LoadBackupHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Stop the server container
-	if err := s.runner.StopContainer(); err != nil {
+	if err := s.containerService.StopContainer(); err != nil {
 		WriteJSON(w, messageToJSON(http.StatusInternalServerError, err.Error(), nil))
 		return
 	}
@@ -139,7 +139,7 @@ func (s *APIServer) LoadBackupHandler(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 
-		if err := s.runner.Containerize(); err != nil {
+		if err := s.containerService.Containerize(); err != nil {
 			WriteJSON(w, messageToJSON(http.StatusInternalServerError, "failed to start server", nil))
 			return
 		}
@@ -260,7 +260,7 @@ func (s *APIServer) LogsHandler(w http.ResponseWriter, r *http.Request) {
 
 func (s *APIServer) StopHandler(w http.ResponseWriter, r *http.Request) {
 
-	if err := s.runner.StopContainer(); err != nil {
+	if err := s.containerService.StopContainer(); err != nil {
 		WriteJSON(w, messageToJSON(http.StatusInternalServerError, "internal server error", nil))
 		return
 	}
@@ -270,7 +270,7 @@ func (s *APIServer) StopHandler(w http.ResponseWriter, r *http.Request) {
 
 func (s *APIServer) StartHandler(w http.ResponseWriter, r *http.Request) {
 
-	if err := s.runner.Containerize(); err != nil {
+	if err := s.containerService.Containerize(); err != nil {
 		WriteJSON(w, messageToJSON(http.StatusInternalServerError, "internal server error", nil))
 		return
 	}

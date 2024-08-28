@@ -17,7 +17,7 @@ import (
 	v1 "github.com/opencontainers/image-spec/specs-go/v1"
 )
 
-type ContainerRunner struct {
+type ContainerService struct {
 	Image         string                      // image for a container
 	BuildMode     bool                        // build mode (if set to true -> container builds from Dockerfile)
 	ContainerName string                      // container name
@@ -40,8 +40,8 @@ func NewContainerRunner(img string,
 	netconf network.NetworkingConfig,
 	platform v1.Platform,
 	pullopts types.ImagePullOptions,
-	startopts types.ContainerStartOptions) *ContainerRunner {
-	return &ContainerRunner{
+	startopts types.ContainerStartOptions) *ContainerService {
+	return &ContainerService{
 		Image:         img,
 		ContainerName: cn,
 		NetworkName:   netname,
@@ -56,7 +56,7 @@ func NewContainerRunner(img string,
 	}
 }
 
-func (r *ContainerRunner) InitializeClient() error {
+func (r *ContainerService) InitializeClient() error {
 	cli, err := client.NewClientWithOpts(client.FromEnv, client.WithAPIVersionNegotiation())
 	if err != nil {
 		log.Printf("Pull error")
@@ -68,7 +68,7 @@ func (r *ContainerRunner) InitializeClient() error {
 	return nil
 }
 
-func (r *ContainerRunner) PullDockerImage() (io.ReadCloser, error) {
+func (r *ContainerService) PullDockerImage() (io.ReadCloser, error) {
 
 	out, err := r.Client.ImagePull(r.Context, r.Image, r.PullOpts)
 	if err != nil {
@@ -109,14 +109,14 @@ func ExtractImageID(buildResponse types.ImageBuildResponse) (string, error) {
 	return buildAux.ID, nil
 }
 
-func (r *ContainerRunner) CreateNetwork() (types.NetworkCreateResponse, error) {
+func (r *ContainerService) CreateNetwork() (types.NetworkCreateResponse, error) {
 	return r.Client.NetworkCreate(
 		r.Context,
 		r.NetworkName,
 		types.NetworkCreate{},
 	)
 }
-func (r *ContainerRunner) CreateContainer() (container.CreateResponse, error) {
+func (r *ContainerService) CreateContainer() (container.CreateResponse, error) {
 	return r.Client.ContainerCreate(
 		r.Context,
 		&r.Config,
@@ -126,11 +126,11 @@ func (r *ContainerRunner) CreateContainer() (container.CreateResponse, error) {
 		r.ContainerName)
 }
 
-func (r *ContainerRunner) StartContainer(resp container.CreateResponse) error {
+func (r *ContainerService) StartContainer(resp container.CreateResponse) error {
 	return r.Client.ContainerStart(r.Context, resp.ID, r.StartOpts)
 }
 
-func (r *ContainerRunner) Containerize() error {
+func (r *ContainerService) Containerize() error {
 
 	if err := r.InitializeClient(); err != nil {
 		log.Printf("init client error")
@@ -168,7 +168,7 @@ func (r *ContainerRunner) Containerize() error {
 	return nil
 }
 
-func (r *ContainerRunner) StopContainer() error {
+func (r *ContainerService) StopContainer() error {
 	if err := r.InitializeClient(); err != nil {
 		log.Printf("Error initializing client %s\n", err)
 		return err
