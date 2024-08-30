@@ -9,8 +9,11 @@ import (
 	"strings"
 	"time"
 
+	_ "main/docs"
+
 	"github.com/golang-jwt/jwt"
 	"github.com/gorilla/mux"
+	httpSwagger "github.com/swaggo/http-swagger"
 )
 
 type JSONResponse struct {
@@ -59,6 +62,9 @@ func (s *APIServer) Run() {
 
 	r := mux.NewRouter()
 
+	// Serve Swagger UI
+	r.PathPrefix("/swagger/").Handler(httpSwagger.WrapHandler)
+
 	r.HandleFunc("/login", s.LoginHandler).Methods("POST")
 
 	r.Handle("/stop", s.JwtAuth(http.HandlerFunc(s.StopHandler))).Methods("POST")
@@ -80,14 +86,24 @@ func (s *APIServer) Run() {
 	}
 }
 
-// To load backup:
-// shutdown server
-// format the time to match the desired format
-// backup current state
-// remove current server files
-// unzip backup to mcdata/
-// start the server
+// LoadBackupHandler loads a backup from a file or multipart form data
+// @Summary Load a backup
+// @Description Load a backup from the disk or multipart form data
+// @Tags backup
+// @Accept  json
+// @Produce  json
+// @Param file query string false "Whether to load backup from a file"
+// @Success 200 {object} JSONResponse
+// @Failure 500 {object} JSONResponse
+// @Router /backup/load [post]
 func (s *APIServer) LoadBackupHandler(w http.ResponseWriter, r *http.Request) {
+	// To load backup:
+	// shutdown server
+	// format the time to match the desired format
+	// backup current state
+	// remove current server files
+	// unzip backup to mcdata/
+	// start the server
 	var returnData any
 	doesExist, _ := exists("backups")
 	if !doesExist {
@@ -169,6 +185,15 @@ func (s *APIServer) LoadBackupHandler(w http.ResponseWriter, r *http.Request) {
 	WriteJSON(w, messageToJSON(http.StatusOK, "loading data successful", returnData))
 }
 
+// SyncHandler synchronizes data
+// @Summary Sync data
+// @Description Sync the latest data
+// @Tags backup
+// @Accept  json
+// @Produce  json
+// @Success 200 {object} JSONResponse
+// @Failure 500 {object} JSONResponse
+// @Router /sync [post]
 func (s *APIServer) SyncHandler(w http.ResponseWriter, r *http.Request) {
 
 	backupData, err := s.backupService.Sync()
@@ -179,6 +204,17 @@ func (s *APIServer) SyncHandler(w http.ResponseWriter, r *http.Request) {
 
 }
 
+// LoginHandler handles user login
+// @Summary Login
+// @Description Authenticates the user and returns a JWT token
+// @Tags auth
+// @Accept  json
+// @Produce  json
+// @Param credentials body map[string]string true "User credentials"
+// @Success 200 {object} JSONResponse
+// @Failure 400 {object} JSONResponse
+// @Failure 401 {object} JSONResponse
+// @Router /login [post]
 func (s *APIServer) LoginHandler(w http.ResponseWriter, r *http.Request) {
 	var credentials struct {
 		Username string `json:"username"`
@@ -217,6 +253,15 @@ func (s *APIServer) LoginHandler(w http.ResponseWriter, r *http.Request) {
 	WriteJSON(w, messageToJSON(http.StatusOK, "authorized", response))
 }
 
+// GetBackupHandler retrieves the list of available backups
+// @Summary Get backups
+// @Description Retrieves the list of available backups
+// @Tags backup
+// @Accept  json
+// @Produce  json
+// @Success 200 {object} JSONResponse
+// @Failure 500 {object} JSONResponse
+// @Router /backup [get]
 func (s *APIServer) GetBackupHandler(w http.ResponseWriter, r *http.Request) {
 	backups, err := s.backupService.GetBackups()
 	if err != nil {
@@ -229,6 +274,16 @@ func (s *APIServer) GetBackupHandler(w http.ResponseWriter, r *http.Request) {
 	WriteJSON(w, messageToJSON(http.StatusOK, "retrieved backups", response))
 }
 
+// BackupHandler creates a backup
+// @Summary Create a backup
+// @Description Creates a backup of the server
+// @Tags backup
+// @Accept  json
+// @Produce  json
+// @Param backup body map[string]string true "Backup information"
+// @Success 200 {object} JSONResponse
+// @Failure 500 {object} JSONResponse
+// @Router /backup [post]
 func (s *APIServer) BackupHandler(w http.ResponseWriter, r *http.Request) {
 	var backupFileName struct {
 		Backup string `json:"backup"`
@@ -236,7 +291,7 @@ func (s *APIServer) BackupHandler(w http.ResponseWriter, r *http.Request) {
 
 	// Decode JSON body to get the backup file name
 	if err := json.NewDecoder(r.Body).Decode(&backupFileName); err != nil {
-		WriteJSON(w, messageToJSON(http.StatusInternalServerError, "error decoding body", nil))
+		WriteJSON(w, messageToJSON(http.StatusInternalServerError, err.Error(), nil))
 		return
 	}
 	backupName := backupFileName.Backup
@@ -246,12 +301,22 @@ func (s *APIServer) BackupHandler(w http.ResponseWriter, r *http.Request) {
 
 	backupData, err := s.backupService.Backup(backupName)
 	if err != nil {
-		WriteJSON(w, messageToJSON(http.StatusInternalServerError, "backup failed", nil))
+		WriteJSON(w, messageToJSON(http.StatusInternalServerError, err.Error(), nil))
 		return
 	}
 	WriteJSON(w, messageToJSON(http.StatusOK, "backup successful", backupData))
 }
 
+// DeleteBackupHandler deletes a backup
+// @Summary Delete a backup
+// @Description Deletes a specified backup
+// @Tags backup
+// @Accept  json
+// @Produce  json
+// @Param delete query string true "Name of the backup to delete"
+// @Success 200 {object} JSONResponse
+// @Failure 500 {object} JSONResponse
+// @Router /backup/delete [delete]
 func (s *APIServer) DeleteBackupHandler(w http.ResponseWriter, r *http.Request) {
 	backupToDelete := r.URL.Query().Get("delete")
 
@@ -284,6 +349,15 @@ func (s *APIServer) DeleteBackupHandler(w http.ResponseWriter, r *http.Request) 
 	WriteJSON(w, messageToJSON(http.StatusOK, fmt.Sprintf("backup %s deleted", backupToDelete), backupData))
 }
 
+// LogsHandler retrieves server logs
+// @Summary Get logs
+// @Description Retrieves the server logs
+// @Tags logs
+// @Accept  json
+// @Produce  json
+// @Success 200 {object} JSONResponse
+// @Failure 500 {object} JSONResponse
+// @Router /logs [get]
 func (s *APIServer) LogsHandler(w http.ResponseWriter, r *http.Request) {
 	logsPath := s.LogsPath
 	logs, err := GetMcServerLogs(logsPath)
@@ -303,6 +377,15 @@ func (s *APIServer) LogsHandler(w http.ResponseWriter, r *http.Request) {
 
 }
 
+// StopHandler stops the server
+// @Summary Stop server
+// @Description Stops the server container
+// @Tags server
+// @Accept  json
+// @Produce  json
+// @Success 200 {object} JSONResponse
+// @Failure 500 {object} JSONResponse
+// @Router /stop [post]
 func (s *APIServer) StopHandler(w http.ResponseWriter, r *http.Request) {
 
 	data, err := s.containerService.StopContainer()
@@ -314,6 +397,15 @@ func (s *APIServer) StopHandler(w http.ResponseWriter, r *http.Request) {
 	WriteJSON(w, messageToJSON(http.StatusOK, "server stopped", data))
 }
 
+// StartHandler starts the server
+// @Summary Start server
+// @Description Starts the server container
+// @Tags server
+// @Accept  json
+// @Produce  json
+// @Success 200 {object} JSONResponse
+// @Failure 500 {object} JSONResponse
+// @Router /start [post]
 func (s *APIServer) StartHandler(w http.ResponseWriter, r *http.Request) {
 
 	data, err := s.containerService.Containerize()

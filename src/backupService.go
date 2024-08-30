@@ -552,7 +552,7 @@ func (bs *BackupService) Backup(backupName string) (*BackupData, error) {
 		return nil, err
 	}
 	duration := time.Since(currentTime)
-	size, err := getFileSize(fmt.Sprintf("backups/%s", backupName))
+	size, err := getFileSize(fmt.Sprintf("backups/%s", fileName))
 	if err != nil {
 		return nil, err
 	}
