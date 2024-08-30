@@ -88,16 +88,18 @@ func (s *APIServer) Run() {
 // unzip backup to mcdata/
 // start the server
 func (s *APIServer) LoadBackupHandler(w http.ResponseWriter, r *http.Request) {
+	var returnData any
 	doesExist, _ := exists("backups")
 	if !doesExist {
 		if err := os.Mkdir("backups", os.FileMode(0755)); err != nil {
-			log.Fatalln("cannot create directory", err)
+			log.Println("cannot create directory", err)
+			WriteJSON(w, messageToJSON(http.StatusInternalServerError, err.Error(), nil))
 			return
 		}
 	}
 
 	// Stop the server container
-	if err := s.containerService.StopContainer(); err != nil {
+	if _, err := s.containerService.StopContainer(); err != nil {
 		WriteJSON(w, messageToJSON(http.StatusInternalServerError, err.Error(), nil))
 		return
 	}
@@ -105,22 +107,39 @@ func (s *APIServer) LoadBackupHandler(w http.ResponseWriter, r *http.Request) {
 	fileFlag := r.URL.Query().Get("file")
 
 	if fileFlag == "true" {
-		r.Header.Set("Content-Type", "multipart/form-data")
 		r.Body = http.MaxBytesReader(w, r.Body, 1<<30) // 1 GB limit
 
+		// Parse multipart form data
+		if err := r.ParseMultipartForm(1 << 30); err != nil { // 1 GB limit
+			WriteJSON(w, messageToJSON(http.StatusBadRequest, "unable to parse multipart form", nil))
+			return
+		}
+
+		// Get the file from the form
+		file, header, err := r.FormFile("file")
+		if err != nil {
+			WriteJSON(w, messageToJSON(http.StatusBadRequest, "error retrieving the file", nil))
+			return
+		}
+		defer file.Close()
+
+		// Extract the real file name
+		fileName := header.Filename
+
 		// Create a progress logger to log the upload status
-		totalBytes := r.ContentLength
 		progressReader := &ProgressReader{
-			Reader:      r.Body,
-			TotalBytes:  totalBytes,
+			Reader:      file,
+			TotalBytes:  header.Size,
 			LoggedBytes: 0,
 			Logger:      log.Default(),
 		}
 
-		if err := s.backupService.UploadBackupMultipart(progressReader); err != nil {
-			WriteJSON(w, messageToJSON(http.StatusInternalServerError, "backup multipart failure", nil))
+		data, err := s.backupService.UploadBackupMultipart(progressReader, fileName)
+		if err != nil {
+			WriteJSON(w, messageToJSON(http.StatusInternalServerError, err.Error(), nil))
 			return
 		}
+		returnData = data
 
 	} else {
 		var backupFileName struct {
@@ -134,26 +153,29 @@ func (s *APIServer) LoadBackupHandler(w http.ResponseWriter, r *http.Request) {
 		}
 		backupFile := backupFileName.Backup
 
-		if err := s.backupService.LoadBackupFromDisk(backupFile); err != nil {
+		data, err := s.backupService.LoadBackupFromDisk(backupFile)
+		if err != nil {
 			WriteJSON(w, messageToJSON(http.StatusInternalServerError, "loading data from disk failed", nil))
 			return
 		}
 
-		if err := s.containerService.Containerize(); err != nil {
+		if _, err := s.containerService.Containerize(); err != nil {
 			WriteJSON(w, messageToJSON(http.StatusInternalServerError, "failed to start server", nil))
 			return
 		}
+		returnData = data
 	}
 
-	WriteJSON(w, messageToJSON(http.StatusOK, "loading data successful", "TODO"))
+	WriteJSON(w, messageToJSON(http.StatusOK, "loading data successful", returnData))
 }
 
 func (s *APIServer) SyncHandler(w http.ResponseWriter, r *http.Request) {
 
-	if err := s.backupService.Sync(); err != nil {
+	backupData, err := s.backupService.Sync()
+	if err != nil {
 		WriteJSON(w, messageToJSON(http.StatusInternalServerError, "error syncing data", nil))
 	}
-	WriteJSON(w, messageToJSON(http.StatusOK, "synced successfully", nil))
+	WriteJSON(w, messageToJSON(http.StatusOK, "synced successfully", backupData))
 
 }
 
@@ -204,7 +226,7 @@ func (s *APIServer) GetBackupHandler(w http.ResponseWriter, r *http.Request) {
 	response := map[string][]string{
 		"backups": backups,
 	}
-	WriteJSON(w, messageToJSON(http.StatusOK, "backup successful", response))
+	WriteJSON(w, messageToJSON(http.StatusOK, "retrieved backups", response))
 }
 
 func (s *APIServer) BackupHandler(w http.ResponseWriter, r *http.Request) {
@@ -222,21 +244,44 @@ func (s *APIServer) BackupHandler(w http.ResponseWriter, r *http.Request) {
 		backupName = "server"
 	}
 
-	if err := s.backupService.Backup(backupName); err != nil {
+	backupData, err := s.backupService.Backup(backupName)
+	if err != nil {
 		WriteJSON(w, messageToJSON(http.StatusInternalServerError, "backup failed", nil))
 		return
 	}
-	WriteJSON(w, messageToJSON(http.StatusOK, "backup successful", "todo"))
+	WriteJSON(w, messageToJSON(http.StatusOK, "backup successful", backupData))
 }
 
 func (s *APIServer) DeleteBackupHandler(w http.ResponseWriter, r *http.Request) {
 	backupToDelete := r.URL.Query().Get("delete")
+
+	if fileExists, _ := exists(fmt.Sprintf("backups/%s", backupToDelete)); !fileExists {
+		WriteJSON(w, messageToJSON(http.StatusInternalServerError, "backup file does not exist", nil))
+		return
+	}
+
+	fileSize, err := getFileSize(fmt.Sprintf("backups/%s", backupToDelete))
+	if err != nil {
+		log.Println(err)
+		WriteJSON(w, messageToJSON(http.StatusInternalServerError, "failed getting file size", nil))
+		return
+	}
+
+	start := time.Now()
 	removePath := fmt.Sprintf("backups/%s", backupToDelete)
 	if err := os.Remove(removePath); err != nil {
-		log.Fatalln(err)
+		log.Println(err)
 		WriteJSON(w, messageToJSON(http.StatusInternalServerError, "failed removing backup file", nil))
+		return
 	}
-	WriteJSON(w, messageToJSON(http.StatusOK, fmt.Sprintf("backup %s deleted\n", backupToDelete), "todo"))
+
+	deleteTime := time.Since(start)
+	uploadTime := time.Duration(0)
+	fileSizeFloat := float64(fileSize)
+
+	backupData := NewBackupData(&Bucket{}, backupToDelete, fileSizeFloat, &deleteTime, &uploadTime, &start)
+
+	WriteJSON(w, messageToJSON(http.StatusOK, fmt.Sprintf("backup %s deleted", backupToDelete), backupData))
 }
 
 func (s *APIServer) LogsHandler(w http.ResponseWriter, r *http.Request) {
@@ -260,22 +305,24 @@ func (s *APIServer) LogsHandler(w http.ResponseWriter, r *http.Request) {
 
 func (s *APIServer) StopHandler(w http.ResponseWriter, r *http.Request) {
 
-	if err := s.containerService.StopContainer(); err != nil {
+	data, err := s.containerService.StopContainer()
+	if err != nil {
 		WriteJSON(w, messageToJSON(http.StatusInternalServerError, "internal server error", nil))
 		return
 	}
 
-	WriteJSON(w, messageToJSON(http.StatusOK, "server stopped", "todo"))
+	WriteJSON(w, messageToJSON(http.StatusOK, "server stopped", data))
 }
 
 func (s *APIServer) StartHandler(w http.ResponseWriter, r *http.Request) {
 
-	if err := s.containerService.Containerize(); err != nil {
-		WriteJSON(w, messageToJSON(http.StatusInternalServerError, "internal server error", nil))
+	data, err := s.containerService.Containerize()
+	if err != nil {
+		WriteJSON(w, messageToJSON(http.StatusInternalServerError, "internal server error", data))
 		return
 	}
 
-	WriteJSON(w, messageToJSON(http.StatusOK, "server started", nil))
+	WriteJSON(w, messageToJSON(http.StatusOK, "server started", data))
 
 }
 
