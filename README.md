@@ -1,6 +1,6 @@
-# docker-runner-api
+# mcmgmt-api
 
-This is an application that runs docker container with a Minecraft Server and lets you manage the container's state (Starting/stopping) by using a web interface.
+This is an application that runs docker container with a Minecraft Server and lets you manage the container's state (Starting/stopping/backup) by using a web API.
 
 
 
