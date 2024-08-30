@@ -4,16 +4,45 @@ This is an application that runs docker container with a Minecraft Server and le
 
 
 
-### API Specification
+## API Specification
+App runs with swagger endpoint `/swagger/index.html`. You can see the specs here.
 
-### Running the app
+All API JSON responses adhere to the following template:
+```
+{
+  "http_status": <int>,
+  "message": "string",
+  "response": <data>
+}
+```
+
+The "response" part handles response specific to the API endpoint like custom JSON structures defined in the code.
+
+
+
+## Running the app
+Environment vars needed to run the app:
+```
+#!/bin/bash
+
+ 
+export ADMIN_USER=username
+export ADMIN_PASSWORD=password
+export BACKUPS_BUCKET=bucket_name
+export PROJECT_ID=gcp_project_id
+export JWT_SECRET=very_complicated_password
+
+# if you want to use cloud sync
+export GCP_SERVICE_ACCOUNT=svcaccount_with_gcs_access@something.iam.gserviceaccount.com
+```
 
 Building the app:
 ```
 go build -o mcmgmt
 ```
 
-### Dependencies
+## Dependencies
+
 
 To use this application, you have to install [Go](https://go.dev/doc/install) and [Docker](https://docs.docker.com/engine/install/) on your machine:
 
