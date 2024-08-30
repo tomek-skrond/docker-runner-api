@@ -14,12 +14,31 @@ import (
 )
 
 func main() {
+	// server params
+	listenPort := ":7777"
+	backupPath := "backups"
+
+	// container params
+	img := "itzg/minecraft-server"
+	cn := "bebok"
+
+	// needed envs
+	secret := os.Getenv("JWT_SECRET")
+	bucketName := os.Getenv("BACKUPS_BUCKET")
+	projectID := os.Getenv("PROJECT_ID")
 
 	// create backups directory
-
-	doesExist, _ := exists("backups")
-	if !doesExist {
+	doesExistBackups, _ := exists("backups")
+	if !doesExistBackups {
 		if err := os.Mkdir("backups", os.FileMode(0755)); err != nil {
+			log.Fatalln("cannot create directory", err)
+			panic(err)
+		}
+	}
+
+	doesExistMcData, _ := exists("mcdata")
+	if !doesExistMcData {
+		if err := os.Mkdir("mcdata", os.FileMode(0755)); err != nil {
 			log.Fatalln("cannot create directory", err)
 			panic(err)
 		}
@@ -30,31 +49,24 @@ func main() {
 	if err != nil {
 		panic(err)
 	}
-	templatePath := fmt.Sprintf("%v/templates/", bindPath)
 	logPath := fmt.Sprintf("%v/mcdata/logs/latest.log", bindPath)
 
-	// create runner
-	img := "itzg/minecraft-server"
-	cn := "bebok"
+	// create login service
+	loginSvc := NewLoginService(secret)
 
+	// create runner
 	runner := InitRunner(img, cn, bindPath)
 
 	// create bucket controller
-	bucketName := os.Getenv("BACKUPS_BUCKET")
-	projectID := os.Getenv("PROJECT_ID")
-
 	bucket, err := InitBucket(bucketName, projectID)
 	if err != nil {
 		log.Fatalln(err)
 	}
 
+	backupSvc := NewBackupService(bucket, backupPath)
+
 	// create API server instance
-	listenPort := ":7777"
-
-	secret := os.Getenv("JWT_SECRET")
-
-	server := NewAPIServer(listenPort, templatePath, logPath, runner, bucket, secret)
-
+	server := NewAPIServer(listenPort, logPath, loginSvc, runner, backupSvc, secret)
 	server.Run()
 }
 
@@ -68,7 +80,7 @@ func InitBucket(bucketName, projectID string) (*Bucket, error) {
 	return bucket, nil
 }
 
-func InitRunner(containerImage, containerName, bindPath string) *ContainerRunner {
+func InitRunner(containerImage, containerName, bindPath string) *ContainerService {
 	img := containerImage
 	cn := containerName
 
@@ -83,6 +95,7 @@ func InitRunner(containerImage, containerName, bindPath string) *ContainerRunner
 		Image:        img,
 		ExposedPorts: nat.PortSet{ports: struct{}{}},
 		Env:          []string{"EULA=TRUE"},
+		User:         fmt.Sprintf("%d:%d", os.Getuid(), os.Getgid()), // Match the current user
 	}
 	hostconf := container.HostConfig{
 		Resources: container.Resources{
