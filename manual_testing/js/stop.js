@@ -1,7 +1,8 @@
-let headersList = {
+async function main(){
+  let headersList = {
     "Accept": "*/*",
     "User-Agent": "Thunder Client (https://www.thunderclient.com)",
-    "Authorization": "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJleHAiOjE3MjUwNTQ0NTUsImlzcyI6InRvbW8ifQ.2xZ-p_OSwCqDekdTlhcy3ShWcSYDk3XA63LKM-gvnCI"
+    "Authorization": "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJleHAiOjE3MjU0ODgwMTAsImlzcyI6InRvbW8ifQ.3keU7SsYZhuLSryOC9_ZGXGrE94Ypevz9vLkoTrarZg"
    }
    
    let response = await fetch("localhost:7777/stop", { 
@@ -12,3 +13,6 @@ let headersList = {
    let data = await response.text();
    console.log(data);
    
+}
+
+main();

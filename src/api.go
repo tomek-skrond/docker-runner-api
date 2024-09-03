@@ -62,6 +62,7 @@ func (s *APIServer) Run() {
 
 	r := mux.NewRouter()
 
+	r.Use(corsMiddleware)
 	// Serve Swagger UI
 	r.PathPrefix("/swagger/").Handler(httpSwagger.WrapHandler)
 
@@ -84,6 +85,23 @@ func (s *APIServer) Run() {
 	if err := http.ListenAndServe(s.ListenPort, r); err != nil {
 		panic(err)
 	}
+}
+
+// CORS middleware function
+func corsMiddleware(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Access-Control-Allow-Origin", "*") // Change "*" to specific origin if needed
+		w.Header().Set("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS")
+		w.Header().Set("Access-Control-Allow-Headers", "Content-Type, Authorization")
+
+		// Handle preflight request
+		if r.Method == http.MethodOptions {
+			w.WriteHeader(http.StatusOK)
+			return
+		}
+
+		next.ServeHTTP(w, r)
+	})
 }
 
 // LoadBackupHandler loads a backup from a file or multipart form data
