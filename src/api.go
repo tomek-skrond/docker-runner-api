@@ -6,12 +6,10 @@ import (
 	"log"
 	"net/http"
 	"os"
-	"strings"
 	"time"
 
 	_ "main/docs"
 
-	"github.com/golang-jwt/jwt"
 	"github.com/gorilla/mux"
 	httpSwagger "github.com/swaggo/http-swagger"
 )
@@ -40,8 +38,6 @@ type APIServer struct {
 	containerService *ContainerService
 	backupService    *BackupService
 	loginService     *LoginService
-	InfoLogger       *log.Logger
-	ErrorLogger      *log.Logger
 	jwtSecret        []byte
 }
 
@@ -62,7 +58,7 @@ func (s *APIServer) Run() {
 
 	r := mux.NewRouter()
 
-	r.Use(corsMiddleware)
+	r.Use(corsMiddleware, LoggerMiddleware)
 	// Serve Swagger UI
 	r.PathPrefix("/swagger/").Handler(httpSwagger.WrapHandler)
 
@@ -87,22 +83,6 @@ func (s *APIServer) Run() {
 	}
 }
 
-// CORS middleware function
-func corsMiddleware(next http.Handler) http.Handler {
-	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		w.Header().Set("Access-Control-Allow-Origin", "*") // Change "*" to specific origin if needed
-		w.Header().Set("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS")
-		w.Header().Set("Access-Control-Allow-Headers", "Content-Type, Authorization")
-
-		// Handle preflight request
-		if r.Method == http.MethodOptions {
-			w.WriteHeader(http.StatusOK)
-			return
-		}
-
-		next.ServeHTTP(w, r)
-	})
-}
 
 // LoadBackupHandler loads a backup from a file or multipart form data
 // @Summary Load a backup
@@ -434,39 +414,4 @@ func (s *APIServer) StartHandler(w http.ResponseWriter, r *http.Request) {
 
 	WriteJSON(w, messageToJSON(http.StatusOK, "server started", data))
 
-}
-
-// middleware
-func (s *APIServer) JwtAuth(next http.Handler) http.Handler {
-	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		// Extract the Authorization header
-		authHeader := r.Header.Get("Authorization")
-		if authHeader == "" {
-			http.Error(w, "Forbidden", http.StatusForbidden)
-			return
-		}
-
-		// Split the header to get the token part
-		parts := strings.Split(authHeader, " ")
-		if len(parts) != 2 || parts[0] != "Bearer" {
-			http.Error(w, "Bad Request", http.StatusBadRequest)
-			return
-		}
-
-		tokenString := parts[1]
-
-		// Parse the JWT token
-		claims := &jwt.StandardClaims{}
-		token, err := jwt.ParseWithClaims(tokenString, claims, func(token *jwt.Token) (interface{}, error) {
-			return s.jwtSecret, nil
-		})
-
-		if err != nil || !token.Valid {
-			http.Error(w, "Forbidden", http.StatusForbidden)
-			return
-		}
-
-		// Call the next handler in the chain
-		next.ServeHTTP(w, r)
-	})
 }
