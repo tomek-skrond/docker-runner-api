@@ -4,6 +4,7 @@ import (
 	"archive/zip"
 	"bufio"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"io/ioutil"
@@ -12,8 +13,104 @@ import (
 	"os"
 	"path/filepath"
 	"regexp"
+	"runtime"
 	"strings"
+
+	"golang.org/x/exp/rand"
 )
+
+const (
+	letterBytes = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ"
+	digitBytes  = "0123456789"
+)
+
+func inTrustedRoot(path string, trustedRoot string) error {
+	absPath, err := filepath.Abs(path)
+	if err != nil {
+		return errors.New("error determining absolute path")
+	}
+
+	// Ensure the resolved path starts with the trusted root
+	if !filepath.HasPrefix(absPath, trustedRoot) {
+		return errors.New("path is outside of trusted root")
+	}
+
+	return nil
+}
+
+// resolveAndCheckPath resolves the symlinks and checks if the parent directory is within the trusted root
+func resolveAndCheckPath(trustedPath, path string) (string, error) {
+	// Clean the path
+	cleanedPath := filepath.Clean(path)
+	fullPath, err := filepath.Abs(cleanedPath)
+	if err != nil {
+		return fullPath, errors.New("cannot resolve full path")
+	}
+
+	// // Resolve symlinks for the parent directory
+	// parentDir := filepath.Dir(cleanedPath)
+	// resolvedParentDir, err := filepath.EvalSymlinks(parentDir)
+	// if err != nil {
+	// 	fmt.Println(resolvedParentDir)
+	// 	return cleanedPath, errors.New("error resolving symlinks for parent directory")
+	// }
+
+	// Verify if the resolved parent directory is within the trusted root
+	err = inTrustedRoot(fullPath, trustedPath)
+	if err != nil {
+		return cleanedPath, errors.New("path is outside of trusted root")
+	}
+
+	// Check if the directory exists, and create it if not
+	err = createDirectoryIfNotExists(fullPath)
+	if err != nil {
+		return fullPath, err
+	}
+
+	return fullPath, nil
+}
+
+// createDirectoryIfNotExists checks if the directory exists, and creates it if not
+func createDirectoryIfNotExists(path string) error {
+	// Check if the path exists
+	if _, err := os.Stat(path); os.IsNotExist(err) {
+		// Directory does not exist, create it
+		err := os.MkdirAll(path, 0755) // 0755 is the permission mode for the directory
+		if err != nil {
+			return fmt.Errorf("failed to create directory: %s, error: %v", path, err)
+		}
+		fmt.Println("Created directory: " + path)
+	} else if err != nil {
+		return fmt.Errorf("error checking directory: %s, error: %v", path, err)
+	}
+	return nil
+}
+
+// verifyPath checks if the path is valid based on the OS
+func verifyPath(trustedPath, path string) (string, error) {
+	if runtime.GOOS == "linux" || runtime.GOOS == "darwin" {
+		fmt.Println("Trusted Path: ", trustedPath)
+		return resolveAndCheckPath(trustedPath, path)
+	}
+
+	if runtime.GOOS == "windows" {
+		return path, fmt.Errorf("unimplemented")
+	}
+
+	return path, fmt.Errorf("runtime not implemented: %s", runtime.GOOS)
+}
+
+func randomString(n int) string {
+	var sb strings.Builder
+	for i := 0; i < n; i++ {
+		if rand.Intn(2) == 0 { // 50% chance of letter, 50% chance of digit
+			sb.WriteByte([]byte(letterBytes)[rand.Intn(len(letterBytes))])
+		} else {
+			sb.WriteByte([]byte(digitBytes)[rand.Intn(len(digitBytes))])
+		}
+	}
+	return sb.String()
+}
 
 func contains(slice []string, item string) bool {
 	for _, v := range slice {
@@ -116,7 +213,7 @@ type BackupTemplateData struct {
 	CloudBackups []string
 }
 
-func GetAvailableBackups(backupPath string) ([]string, error) {
+func GetAvailableLocalBackups(backupPath string) ([]string, error) {
 
 	// Open the directory
 	files, err := os.ReadDir(backupPath)
