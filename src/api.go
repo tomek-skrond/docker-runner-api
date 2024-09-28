@@ -77,7 +77,7 @@ func (s *APIServer) Run() {
 
 	r.Handle("/sync", s.JwtAuth(http.HandlerFunc(s.SyncHandler))).Methods("POST")
 
-	fmt.Printf("Server listening on port %v\n", s.ListenPort)
+	log.Printf("Server listening on port %v\n", s.ListenPort)
 	if err := http.ListenAndServe(s.ListenPort, r); err != nil {
 		panic(err)
 	}

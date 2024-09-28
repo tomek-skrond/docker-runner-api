@@ -4,12 +4,10 @@ import (
 	"fmt"
 	"log"
 	"math/rand/v2"
-	"os"
 
 	"github.com/docker/docker/api/types"
 	"github.com/docker/docker/api/types/container"
 	"github.com/docker/docker/api/types/network"
-	"github.com/docker/docker/api/types/strslice"
 	"github.com/docker/go-connections/nat"
 	v1 "github.com/opencontainers/image-spec/specs-go/v1"
 )
@@ -24,7 +22,7 @@ func InitBucket(bucketName, projectID, localBackupPath string) (*Bucket, error) 
 	return bucket, nil
 }
 
-func InitRunner(containerImage, containerName, serverFilesPath string) *ContainerService {
+func InitRunner(containerImage, containerName, serverFilesPath string, memory int64) *ContainerService {
 	img := containerImage
 	cn := containerName
 
@@ -39,13 +37,14 @@ func InitRunner(containerImage, containerName, serverFilesPath string) *Containe
 		Image:        img,
 		ExposedPorts: nat.PortSet{ports: struct{}{}},
 		Env:          []string{"EULA=TRUE"},
-		User:         fmt.Sprintf("%d:%d", os.Getuid(), os.Getgid()), // Match the current user
-		Cmd:          strslice.StrSlice{"sleep", "3600000"},          // Keep container running
+		// User:         fmt.Sprintf("%d:%d", os.Getuid(), os.Getgid()), // Match the current user
+		// Cmd: strslice.StrSlice{"sleep", "3600000"}, // Keep container running - for tests
 	}
 	hostconf := container.HostConfig{
 		Resources: container.Resources{
-			Memory: 4 * 2147483648,
+			Memory: memory * 1024 * 1024,
 		},
+		//todo: create a way to also support docker volumes
 		Binds: []string{
 			fmt.Sprintf("%v/mcdata:/data", serverFilesPath),
 		},
@@ -59,7 +58,9 @@ func InitRunner(containerImage, containerName, serverFilesPath string) *Containe
 		},
 		AutoRemove:  false,
 		NetworkMode: container.NetworkMode(container.NetworkMode(networkName).NetworkName()),
+		Privileged:  true,
 	}
+
 	netconf := network.NetworkingConfig{
 		EndpointsConfig: map[string]*network.EndpointSettings{
 			networkName: {

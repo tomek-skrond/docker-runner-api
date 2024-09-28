@@ -20,7 +20,7 @@ import (
 )
 
 const (
-	letterBytes = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ"
+	letterBytes = "abcdefghijklmnopqrstuvwxyz"
 	digitBytes  = "0123456789"
 )
 
@@ -39,9 +39,9 @@ func inTrustedRoot(path string, trustedRoot string) error {
 }
 
 // resolveAndCheckPath resolves the symlinks and checks if the parent directory is within the trusted root
-func resolveAndCheckPath(trustedPath, path string) (string, error) {
+func resolveAndCheckPath(trustedPath string, path BindPath) (string, error) {
 	// Clean the path
-	cleanedPath := filepath.Clean(path)
+	cleanedPath := filepath.Clean(path.Path)
 	fullPath, err := filepath.Abs(cleanedPath)
 	if err != nil {
 		return fullPath, errors.New("cannot resolve full path")
@@ -61,12 +61,20 @@ func resolveAndCheckPath(trustedPath, path string) (string, error) {
 		return cleanedPath, errors.New("path is outside of trusted root")
 	}
 
+	log.Printf("checking existence of %s path: %s\n", path.Label, fullPath)
 	// Check if the directory exists, and create it if not
 	err = createDirectoryIfNotExists(fullPath)
 	if err != nil {
 		return fullPath, err
 	}
 
+	if path.Label == "serverfiles" {
+		log.Printf("checking existence of minecraft data folder")
+		err = createDirectoryIfNotExists(fmt.Sprintf("%s/mcdata", fullPath))
+		if err != nil {
+			return fullPath, err
+		}
+	}
 	return fullPath, nil
 }
 
@@ -79,7 +87,7 @@ func createDirectoryIfNotExists(path string) error {
 		if err != nil {
 			return fmt.Errorf("failed to create directory: %s, error: %v", path, err)
 		}
-		fmt.Println("Created directory: " + path)
+		log.Printf("created directory: %s\n", path)
 	} else if err != nil {
 		return fmt.Errorf("error checking directory: %s, error: %v", path, err)
 	}
@@ -87,17 +95,17 @@ func createDirectoryIfNotExists(path string) error {
 }
 
 // verifyPath checks if the path is valid based on the OS
-func verifyPath(trustedPath, path string) (string, error) {
+func verifyPath(trustedPath string, path BindPath) (string, error) {
 	if runtime.GOOS == "linux" || runtime.GOOS == "darwin" {
-		fmt.Println("Trusted Path: ", trustedPath)
+		log.Println("established trusted path to be: ", trustedPath)
 		return resolveAndCheckPath(trustedPath, path)
 	}
 
 	if runtime.GOOS == "windows" {
-		return path, fmt.Errorf("unimplemented")
+		return path.Path, fmt.Errorf("unimplemented")
 	}
 
-	return path, fmt.Errorf("runtime not implemented: %s", runtime.GOOS)
+	return path.Path, fmt.Errorf("runtime not implemented: %s", runtime.GOOS)
 }
 
 func randomString(n int) string {
@@ -373,7 +381,7 @@ func removeAllFilesInDir(dir string) error {
 func GetMcServerLogs(filename string) ([]string, error) {
 	content, err := ReadLines(filename)
 	if err != nil {
-		fmt.Println("log errors")
+		log.Println("errors reading logs")
 		return []string{"error reading file, go back to home page"}, err
 	}
 	return content, err

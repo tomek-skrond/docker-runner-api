@@ -12,6 +12,8 @@ require (
 	google.golang.org/api v0.194.0
 )
 
+require github.com/common-nighthawk/go-figure v0.0.0-20210622060536-734e95fb86be // indirect
+
 require (
 	cloud.google.com/go v0.115.1 // indirect
 	cloud.google.com/go/auth v0.9.1 // indirect
