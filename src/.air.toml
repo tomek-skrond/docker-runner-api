@@ -3,7 +3,7 @@ testdata_dir = "testdata"
 tmp_dir = "tmp"
 
 [build]
-  args_bin = []
+  args_bin = ["--server-files","/home/tskr/mctest/srv/", "--backups", "/home/tskr/mctest/backups/", "--trusted-path", "/home/tskr/"]
   bin = "./tmp/main"
   cmd = "go build -o ./tmp/main ."
   delay = 1000

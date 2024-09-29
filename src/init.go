@@ -23,6 +23,8 @@ func InitBucket(bucketName, projectID, localBackupPath string) (*Bucket, error) 
 }
 
 func InitRunner(containerImage, containerName, serverFilesPath string, memory int64) *ContainerService {
+	totalMemory := memory * 1024 * 1024 * 1024
+
 	img := containerImage
 	cn := containerName
 
@@ -42,7 +44,7 @@ func InitRunner(containerImage, containerName, serverFilesPath string, memory in
 	}
 	hostconf := container.HostConfig{
 		Resources: container.Resources{
-			Memory: memory * 1024 * 1024,
+			Memory: totalMemory,
 		},
 		//todo: create a way to also support docker volumes
 		Binds: []string{

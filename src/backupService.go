@@ -439,12 +439,13 @@ func (bs *BackupService) DownloadFileFromCloud(backup string) (time.Duration, in
 func (bs *BackupService) UploadBackupMultipart(progressReader *ProgressReader, fileName string) (*BackupData, error) {
 	// Create the "backups/" directory if it doesn't exist
 	backupDir := bs.backupPath
+	fmt.Println(backupDir)
 	if err := os.MkdirAll(backupDir, os.ModePerm); err != nil {
 		return nil, err
 	}
 
 	// Create a temporary file in the backups directory to store the uploaded data
-	tempFilePath := fmt.Sprintf("%s%s", backupDir, fileName)
+	tempFilePath := fmt.Sprintf("%s/%s", backupDir, fileName)
 	tempFile, err := os.Create(tempFilePath)
 	if err != nil {
 		return nil, err
