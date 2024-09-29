@@ -1,40 +1,48 @@
-# docker-runner-api
+# mcmgmt-api
 
-This is an application that runs docker container with a Minecraft Server and lets you manage the container's state (Starting/stopping) by using a web interface.
+This is an application that runs docker container with a Minecraft Server and lets you manage the container's state (Starting/stopping/backup) by using a web API.
 
 
-### Running the app
+
+## API Specification
+App runs with swagger endpoint `/swagger/index.html`. You can see the specs here.
+
+All API JSON responses adhere to the following template:
+```
+{
+  "http_status": <int>,
+  "message": "string",
+  "response": <data>
+}
+```
+
+The "response" part handles response specific to the API endpoint like custom JSON structures defined in the code.
+
+
+
+## Running the app
+Environment vars needed to run the app:
+```
+#!/bin/bash
+
+ 
+export ADMIN_USER=username
+export ADMIN_PASSWORD=password
+export BACKUPS_BUCKET=bucket_name
+export PROJECT_ID=gcp_project_id
+export JWT_SECRET=very_complicated_password
+
+# if you want to use cloud sync
+export GCP_SERVICE_ACCOUNT=svcaccount_with_gcs_access@something.iam.gserviceaccount.com
+```
 
 Building the app:
 ```
-go build -o runner && ./runner
+go build -o mcmgmt
 ```
 
-The best way to run the app is creating an `.env` file and running a task in `Makefile`, that sources environmental vars, builds and runs the code.
+## Dependencies
 
-```
-make run
-```
-
-
-### Endpoints
-
-```
-	r.HandleFunc("/stop", s.Stop).Methods("POST")
-	r.HandleFunc("/start", s.Start).Methods("POST")
-	r.HandleFunc("/", s.Home).Methods("GET")
-	r.HandleFunc("/logs", s.Logs)
-```
-
-- Endpoint `/` is the homepage.
-
-- Endpoint `/start` runs the container with a server.
-
-- Endpoint `/stop` stops the container.
-
-- Endpoint `/logs` is an endpoint for reading logs.
-
-### Dependencies
 
 To use this application, you have to install [Go](https://go.dev/doc/install) and [Docker](https://docs.docker.com/engine/install/) on your machine:
 
@@ -74,6 +82,8 @@ Server: Docker Engine - Community
   GitCommit:        de40ad0
 ```
 
+### Google Cloud Platform
+
 If you want to use the "Sync with Cloud" functionality, you have to first configure Google Cloud:
 - Service account (with roles for bucket operations and service account token creation)
 - Application default credentials
@@ -82,3 +92,4 @@ ADC could be configured using this command:
 ```
 gcloud auth application-default login --impersonate-service-account $GCP_SERVICE_ACCOUNT
 ```
+

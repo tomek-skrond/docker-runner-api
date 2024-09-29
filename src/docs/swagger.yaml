@@ -1,0 +1,216 @@
+definitions:
+  main.JSONResponse:
+    properties:
+      http_status:
+        type: integer
+      message:
+        type: string
+      response: {}
+    type: object
+info:
+  contact: {}
+paths:
+  /backup:
+    get:
+      consumes:
+      - application/json
+      description: Retrieves the list of available backups
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/main.JSONResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/main.JSONResponse'
+      summary: Get backups
+      tags:
+      - backup
+    post:
+      consumes:
+      - application/json
+      description: Creates a backup of the server
+      parameters:
+      - description: Backup information
+        in: body
+        name: backup
+        required: true
+        schema:
+          additionalProperties:
+            type: string
+          type: object
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/main.JSONResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/main.JSONResponse'
+      summary: Create a backup
+      tags:
+      - backup
+  /backup/delete:
+    delete:
+      consumes:
+      - application/json
+      description: Deletes a specified backup
+      parameters:
+      - description: Name of the backup to delete
+        in: query
+        name: delete
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/main.JSONResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/main.JSONResponse'
+      summary: Delete a backup
+      tags:
+      - backup
+  /backup/load:
+    post:
+      consumes:
+      - application/json
+      description: Load a backup from the disk or multipart form data
+      parameters:
+      - description: Whether to load backup from a file
+        in: query
+        name: file
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/main.JSONResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/main.JSONResponse'
+      summary: Load a backup
+      tags:
+      - backup
+  /login:
+    post:
+      consumes:
+      - application/json
+      description: Authenticates the user and returns a JWT token
+      parameters:
+      - description: User credentials
+        in: body
+        name: credentials
+        required: true
+        schema:
+          additionalProperties:
+            type: string
+          type: object
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/main.JSONResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/main.JSONResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/main.JSONResponse'
+      summary: Login
+      tags:
+      - auth
+  /logs:
+    get:
+      consumes:
+      - application/json
+      description: Retrieves the server logs
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/main.JSONResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/main.JSONResponse'
+      summary: Get logs
+      tags:
+      - logs
+  /start:
+    post:
+      consumes:
+      - application/json
+      description: Starts the server container
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/main.JSONResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/main.JSONResponse'
+      summary: Start server
+      tags:
+      - server
+  /stop:
+    post:
+      consumes:
+      - application/json
+      description: Stops the server container
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/main.JSONResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/main.JSONResponse'
+      summary: Stop server
+      tags:
+      - server
+  /sync:
+    post:
+      consumes:
+      - application/json
+      description: Sync the latest data
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/main.JSONResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/main.JSONResponse'
+      summary: Sync data
+      tags:
+      - backup
+swagger: "2.0"

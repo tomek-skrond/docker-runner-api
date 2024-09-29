@@ -1,132 +1,118 @@
 package main
 
 import (
+	"flag"
 	"fmt"
 	"log"
-	"math/rand/v2"
 	"os"
+	"path/filepath"
 
-	"github.com/docker/docker/api/types"
-	"github.com/docker/docker/api/types/container"
-	"github.com/docker/docker/api/types/network"
-	"github.com/docker/go-connections/nat"
-	v1 "github.com/opencontainers/image-spec/specs-go/v1"
+	"github.com/common-nighthawk/go-figure"
 )
+
+type BindPath struct {
+	Path  string
+	Label string
+}
 
 func main() {
 
-	// create backups directory
-
-	doesExist, _ := exists("backups")
-	if !doesExist {
-		if err := os.Mkdir("backups", os.FileMode(0755)); err != nil {
-			log.Fatalln("cannot create directory", err)
-			panic(err)
-		}
+	fmt.Println("================================================================================================================")
+	// fig1 := figure.NewFigure("welcome to:", "larry3d", true)
+	// fig1.Print()
+	fig2 := figure.NewFigure("mcmgmt-api", "larry3d", true)
+	fig2.Print()
+	fmt.Println("================================================================================================================")
+	flag.Usage = func() {
+		fmt.Fprintf(flag.CommandLine.Output(), "Usage of %s:\n", os.Args[0])
+		flag.PrintDefaults() // prints the default flags
+		os.Exit(0)           // exit after showing help
 	}
 
-	//init server
-	bindPath, err := os.Getwd()
+	execPath, err := os.Executable()
 	if err != nil {
-		panic(err)
+		log.Fatalln("cannot fetch current directory: ", err)
 	}
-	templatePath := fmt.Sprintf("%v/templates/", bindPath)
-	logPath := fmt.Sprintf("%v/mcdata/logs/latest.log", bindPath)
+	trustedPath, err := os.UserHomeDir()
+	if err != nil {
+		log.Fatalln("cannot fetch user home directory: ", err)
+	}
 
-	// create runner
+	workdir := filepath.Dir(execPath)                       // working directory  (.)
+	defaultBackupPath := fmt.Sprintf("%s/backups", workdir) // folder in working directory (./backups)
+	defaultServerFilesPath := workdir                       // working directory (.)
+	defaultMemory := 4                                      // in gigabytes
+
+	listenport := flag.Int("lp", 7777, "api server listen port")
+	backuppath := flag.String("backups", defaultBackupPath, "path where server backups are stored\n\nIMPORTANT: any parent directory specified must exist.\nExample:\n  - if you want to store backups in /etc/minecraft/backups, directory /etc/minecraft MUST EXIST\n")
+	serverfiles := flag.String("server-files", defaultServerFilesPath, "path where server files are stored\n\nIMPORTANT: any parent directory specified must exist.\nExample:\n  - if you want to store backups in /etc/minecraft/serverfiles, directory /etc/minecraft MUST EXIST\n")
+	trustedpath := flag.String("trusted-path", trustedPath, "boundary path to which user can traverse specifying backup/server directories")
+	memory := flag.Int64("memory", int64(defaultMemory), "memory for the minecraft server in GB")
+
+	flag.Parse()
+
+	log.Printf("Started mcmgmt-api binary with PID %v\n", os.Getpid())
+	log.Println("default backup path: ", defaultBackupPath)
+	log.Println("default server files path: ", defaultServerFilesPath)
+	log.Println("default memory path: ", defaultMemory)
+	log.Println("default trusted path: ", trustedPath)
+
+	// server params
+	listenPort := fmt.Sprintf(":%d", *listenport)
+	backupBindPath := BindPath{
+		Path:  filepath.Clean(*backuppath),
+		Label: "backup",
+	}
+	serverFilesBindPath := BindPath{
+		Path:  filepath.Clean(*serverfiles),
+		Label: "serverfiles",
+	}
+
+	trustedPath = *trustedpath
+
+	// fmt.Println(listenPort, backupBindPath, serverFilesBindPath)
+	backupPath, err := verifyPath(trustedPath, backupBindPath)
+	if err != nil {
+		log.Fatalln("invalid backup path: ", backupBindPath, "error: ", err)
+	}
+
+	serverFilesPath, err := verifyPath(trustedPath, serverFilesBindPath)
+	if err != nil {
+		log.Fatalln("invalid bind path: ", serverFilesBindPath, "error: ", err)
+	}
+
+	if serverFilesPath == backupBindPath.Path {
+		log.Fatalln("backup and server files paths cannot be the same")
+	}
+
+	// container params
 	img := "itzg/minecraft-server"
-	cn := "bebok"
+	cn := fmt.Sprintf("mcserver-%s", randomString(9))
 
-	runner := InitRunner(img, cn, bindPath)
-
-	// create bucket controller
+	// needed envs
+	secret := os.Getenv("JWT_SECRET")
 	bucketName := os.Getenv("BACKUPS_BUCKET")
 	projectID := os.Getenv("PROJECT_ID")
 
-	bucket, err := InitBucket(bucketName, projectID)
+	//init server
+
+	logPath := fmt.Sprintf("%v/mcdata/logs/latest.log", serverFilesPath)
+
+	// create login service
+	loginSvc := NewLoginService(secret)
+
+	// create runner
+	runner := InitRunner(img, cn, serverFilesPath, *memory)
+
+	// create bucket controller
+	bucket, err := InitBucket(bucketName, projectID, backupPath)
 	if err != nil {
 		log.Fatalln(err)
 	}
+
+	backupSvc := NewBackupService(bucket, backupPath)
 
 	// create API server instance
-	listenPort := ":7777"
-
-	secret := os.Getenv("JWT_SECRET")
-
-	server := NewAPIServer(listenPort, templatePath, logPath, runner, bucket, secret)
-
+	server := NewAPIServer(listenPort, logPath, loginSvc, runner, backupSvc, secret)
 	server.Run()
-}
-
-func InitBucket(bucketName, projectID string) (*Bucket, error) {
-	bucket, err := NewBucket(bucketName, projectID)
-	if err != nil {
-		log.Fatalln(err)
-		return nil, err
-	}
-
-	return bucket, nil
-}
-
-func InitRunner(containerImage, containerName, bindPath string) *ContainerRunner {
-	img := containerImage
-	cn := containerName
-
-	ports, err := nat.NewPort("tcp", "25565-25565")
-	if err != nil {
-		panic(err)
-	}
-	networkName := fmt.Sprintf("mcnet-%d", rand.IntN(10000))
-
-	conf := container.Config{
-		Hostname:     "minecraft",
-		Image:        img,
-		ExposedPorts: nat.PortSet{ports: struct{}{}},
-		Env:          []string{"EULA=TRUE"},
-	}
-	hostconf := container.HostConfig{
-		Resources: container.Resources{
-			Memory: 4 * 2147483648,
-		},
-		Binds: []string{
-			fmt.Sprintf("%v/mcdata:/data", bindPath),
-		},
-		PortBindings: nat.PortMap{
-			"25565/tcp": []nat.PortBinding{
-				{
-					HostIP:   "0.0.0.0",
-					HostPort: "25565",
-				},
-			},
-		},
-		AutoRemove:  true,
-		NetworkMode: container.NetworkMode(container.NetworkMode(networkName).NetworkName()),
-	}
-	netconf := network.NetworkingConfig{
-		EndpointsConfig: map[string]*network.EndpointSettings{
-			networkName: {
-				NetworkID: networkName,
-			},
-		},
-	}
-	platform := v1.Platform{}
-	pullopts := types.ImagePullOptions{}
-	startopts := types.ContainerStartOptions{}
-
-	if !hostconf.AutoRemove {
-		hostconf.AutoRemove = true
-	}
-
-	runner := NewContainerRunner(
-		img,
-		cn,
-		networkName,
-		conf,
-		hostconf,
-		netconf,
-		platform,
-		pullopts,
-		startopts)
-
-	return runner
 }

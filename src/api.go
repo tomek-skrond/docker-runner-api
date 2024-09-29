@@ -1,46 +1,56 @@
 package main
 
 import (
-	"context"
+	"encoding/json"
 	"fmt"
-	"html/template"
-	"io"
 	"log"
-	"mime/multipart"
 	"net/http"
 	"os"
-	"path/filepath"
 	"time"
 
-	"github.com/golang-jwt/jwt"
+	_ "main/docs"
+
 	"github.com/gorilla/mux"
+	httpSwagger "github.com/swaggo/http-swagger"
 )
 
+type JSONResponse struct {
+	ResponseContent any    `json:"response"`
+	HTTPStatus      int    `json:"http_status"`
+	Message         string `json:"message"`
+}
+
+func NewJSONResponse(status int, msg string, content any) JSONResponse {
+	return JSONResponse{
+		ResponseContent: content,
+		HTTPStatus:      status,
+		Message:         msg,
+	}
+}
+
 type ServerConfig struct {
-	ListenPort   string
-	TemplatePath string
-	LogsPath     string
+	ListenPort string
+	LogsPath   string
 }
 
 type APIServer struct {
 	ServerConfig
-	Runner      *ContainerRunner
-	bucket      *Bucket
-	InfoLogger  *log.Logger
-	ErrorLogger *log.Logger
-	jwtSecret   []byte
+	containerService *ContainerService
+	backupService    *BackupService
+	loginService     *LoginService
+	jwtSecret        []byte
 }
 
-func NewAPIServer(lp string, templatePath string, logsPath string, r *ContainerRunner, b *Bucket, secret string) *APIServer {
+func NewAPIServer(lp string, logsPath string, loginSvc *LoginService, r *ContainerService, b *BackupService, secret string) *APIServer {
 	return &APIServer{
 		ServerConfig: ServerConfig{
-			ListenPort:   lp,
-			TemplatePath: templatePath,
-			LogsPath:     logsPath,
+			ListenPort: lp,
+			LogsPath:   logsPath,
 		},
-		Runner:    r,
-		bucket:    b,
-		jwtSecret: []byte(secret),
+		loginService:     loginSvc,
+		containerService: r,
+		backupService:    b,
+		jwtSecret:        []byte(secret),
 	}
 }
 
@@ -48,481 +58,359 @@ func (s *APIServer) Run() {
 
 	r := mux.NewRouter()
 
-	r.HandleFunc("/", s.LoginPage).Methods("GET")
-	r.HandleFunc("/login", s.Login).Methods("POST")
+	r.Use(corsMiddleware, LoggerMiddleware)
+	// Serve Swagger UI
+	r.PathPrefix("/swagger/").Handler(httpSwagger.WrapHandler)
 
-	// r.HandleFunc("/stop", s.Stop).Methods("POST")
-	r.Handle("/stop", s.JwtAuth(http.HandlerFunc(s.Stop))).Methods("POST")
-	r.Handle("/start", s.JwtAuth(http.HandlerFunc(s.Start))).Methods("POST")
+	r.HandleFunc("/login", s.LoginHandler).Methods("POST")
 
-	r.Handle("/home", s.JwtAuth(http.HandlerFunc(s.Home))).Methods("GET")
-	r.Handle("/logs", s.JwtAuth(http.HandlerFunc(s.Logs))).Methods("GET")
+	r.Handle("/stop", s.JwtAuth(http.HandlerFunc(s.StopHandler))).Methods("POST")
+	r.Handle("/start", s.JwtAuth(http.HandlerFunc(s.StartHandler))).Methods("POST")
 
-	r.Handle("/backups", s.JwtAuth(http.HandlerFunc(s.BackupPage))).Methods("GET")
-	r.Handle("/backup", s.JwtAuth(http.HandlerFunc(s.Backup))).Methods("POST")
-	r.Handle("/backup/delete", s.JwtAuth(http.HandlerFunc(s.DeleteBackup))).Methods("DELETE")
-	r.Handle("/backup/load", s.JwtAuth(http.HandlerFunc(s.LoadBackup))).Methods("POST")
+	r.Handle("/logs", s.JwtAuth(http.HandlerFunc(s.LogsHandler))).Methods("GET")
 
-	r.Handle("/sync", s.JwtAuth(http.HandlerFunc(s.Sync))).Methods("POST")
+	r.Handle("/backup", s.JwtAuth(http.HandlerFunc(s.BackupHandler))).Methods("POST")
+	r.Handle("/backup", s.JwtAuth(http.HandlerFunc(s.GetBackupHandler))).Methods("GET")
 
-	fmt.Printf("Server listening on port %v\n", s.ListenPort)
+	r.Handle("/backup/delete", s.JwtAuth(http.HandlerFunc(s.DeleteBackupHandler))).Methods("DELETE")
+	r.Handle("/backup/load", s.JwtAuth(http.HandlerFunc(s.LoadBackupHandler))).Methods("POST")
+
+	r.Handle("/sync", s.JwtAuth(http.HandlerFunc(s.SyncHandler))).Methods("POST")
+
+	log.Printf("Server listening on port %v\n", s.ListenPort)
 	if err := http.ListenAndServe(s.ListenPort, r); err != nil {
 		panic(err)
 	}
 }
 
-func (s *APIServer) LoadBackup(w http.ResponseWriter, r *http.Request) {
+// LoadBackupHandler loads a backup from a file or multipart form data
+// @Summary Load a backup
+// @Description Load a backup from the disk or multipart form data
+// @Tags backup
+// @Accept  json
+// @Produce  json
+// @Param file query string false "Whether to load backup from a file"
+// @Success 200 {object} JSONResponse
+// @Failure 500 {object} JSONResponse
+// @Router /backup/load [post]
+func (s *APIServer) LoadBackupHandler(w http.ResponseWriter, r *http.Request) {
+	// To load backup:
+	// shutdown server
+	// format the time to match the desired format
+	// backup current state
+	// remove current server files
+	// unzip backup to mcdata/
+	// start the server
+	var returnData any
+	doesExist, _ := exists(s.backupService.backupPath)
+	if !doesExist {
+		if err := os.Mkdir(s.backupService.backupPath, os.FileMode(0755)); err != nil {
+			log.Println("cannot create directory", err)
+			WriteJSON(w, messageToJSON(http.StatusInternalServerError, err.Error(), nil))
+			return
+		}
+	}
 
-	//		http.Error(w, err.Error(), http.StatusInternalServerError)
+	// Stop the server container
+	if _, err := s.containerService.StopContainer(); err != nil {
+		WriteJSON(w, messageToJSON(http.StatusInternalServerError, err.Error(), nil))
+		return
+	}
 
-	s.Runner.StopContainer()
-	backupFile := r.FormValue("backup")
 	fileFlag := r.URL.Query().Get("file")
 
-	// shutdown server
-	// Format the time to match the desired format
-	//backup current state
-	//remove current server files
-	//unzip backup to mcdata/
-	//start the server
-	// log.Println("Headers:", r.Header)
-
 	if fileFlag == "true" {
-
-		r.Header.Set("Content-Type", "multipart/form-data")
-		// Set the maximum file size to 1 GB
 		r.Body = http.MaxBytesReader(w, r.Body, 1<<30) // 1 GB limit
 
-		// Retrieve the file from the form
-		file, fileHeader, err := r.FormFile("backupfile")
+		// Parse multipart form data
+		if err := r.ParseMultipartForm(1 << 30); err != nil { // 1 GB limit
+			WriteJSON(w, messageToJSON(http.StatusBadRequest, "unable to parse multipart form", nil))
+			return
+		}
+
+		// Get the file from the form
+		file, header, err := r.FormFile("file")
 		if err != nil {
-			log.Println(err)
-			http.Error(w, "Error processing file upload", http.StatusInternalServerError)
+			WriteJSON(w, messageToJSON(http.StatusBadRequest, "error retrieving the file", nil))
 			return
 		}
 		defer file.Close()
 
-		//todo: input validation for file name
-		fileName := fileHeader.Filename
-		if err := s.LoadBackupChooseFile(file, fileName); err != nil {
-			log.Fatalln(err)
-			http.Error(w, err.Error(), http.StatusInternalServerError)
+		// Extract the real file name
+		fileName := header.Filename
+
+		// Create a progress logger to log the upload status
+		progressReader := &ProgressReader{
+			Reader:      file,
+			TotalBytes:  header.Size,
+			LoggedBytes: 0,
+			Logger:      log.Default(),
 		}
+
+		data, err := s.backupService.UploadBackupMultipart(progressReader, fileName)
+		if err != nil {
+			WriteJSON(w, messageToJSON(http.StatusInternalServerError, err.Error(), nil))
+			return
+		}
+		returnData = data
+
 	} else {
-		if err := s.LoadBackupFromDisk(backupFile); err != nil {
-			log.Fatalln(err)
-			http.Error(w, err.Error(), http.StatusInternalServerError)
+		var backupFileName struct {
+			Backup string `json:"backup"`
+		}
+
+		// Decode JSON body to get the backup file name
+		if err := json.NewDecoder(r.Body).Decode(&backupFileName); err != nil {
+			WriteJSON(w, messageToJSON(http.StatusInternalServerError, "error decoding body", nil))
 			return
 		}
-	}
+		backupFile := backupFileName.Backup
 
-	http.Redirect(w, r, "/backups", http.StatusSeeOther)
-}
-
-func (s *APIServer) LoadBackupFromDisk(backupFile string) error {
-
-	log.Println("loading new backup initiated")
-	currentTime := time.Now()
-
-	formattedTime := currentTime.Format("20060102_150405")
-
-	fileName := fmt.Sprintf("%s_%s.zip", "mcdata", formattedTime)
-
-	if err := zipit("mcdata", "backups/"+fileName, false); err != nil {
-		log.Fatalln(err)
-		return err
-	}
-
-	if err := removeAllFilesInDir("mcdata"); err != nil {
-		log.Fatalln(err)
-		return err
-
-	}
-
-	if err := unzip(fmt.Sprintf("backups/%s", backupFile), "mcdata"); err != nil {
-		log.Fatalln(err)
-		return err
-
-	}
-
-	s.Runner.Containerize()
-
-	return nil
-}
-
-func (s *APIServer) LoadBackupChooseFile(file multipart.File, backupName string) error {
-
-	// You could save the file or process it further here
-	// For example, save the file to disk
-	out, err := os.Create(fmt.Sprintf("backups/%s", backupName))
-	if err != nil {
-		return err
-	}
-	defer out.Close()
-
-	_, err = io.Copy(out, file)
-	return err
-
-	// log.Printf("File uploaded successfully")
-	// return nil
-}
-func (s *APIServer) UploadDataToCloud(backupsStrArr []string) error {
-	for _, backup := range backupsStrArr {
-		objectPath := fmt.Sprintf("backups/%s", backup)
-
-		// Check if the object already exists in GCS
-		log.Println("check if object exists", backup)
-		exists, err := s.bucket.ObjectExists(backup)
+		data, err := s.backupService.LoadBackupFromDisk(backupFile)
 		if err != nil {
-			log.Printf("Error checking if object exists in GCS: %v", err)
-			return err
-		}
-		if exists {
-			log.Printf("Object %s already exists in GCS. Skipping upload.", objectPath)
-			continue
-		}
-		log.Printf("uploading file %s to GCS\n", backup)
-		if err := s.bucket.UploadFileToGCS(objectPath); err != nil {
-			log.Fatalln(err)
-			return err
-		}
-	}
-	fmt.Println("uploading data to cloud successful")
-
-	return nil
-}
-
-func (s *APIServer) DownloadDataFromCloud(backupsInCloud []string) error {
-	log.Println("getting available backups from disk")
-	backupsOnDisk, err := GetAvailableBackups("backups/")
-	if err != nil {
-		log.Fatalln(err)
-		return err
-	}
-	for _, backup := range backupsInCloud {
-		if !contains(backupsOnDisk, backup) {
-			log.Printf("downloading backup %s from cloud", backup)
-			if err := s.bucket.DownloadDataFromBucket(context.Background(), backup); err != nil {
-				log.Fatalln(err)
-				return err
-			}
-		}
-	}
-	fmt.Println("downloading data to disk successful")
-
-	return nil
-}
-
-func (s *APIServer) Sync(w http.ResponseWriter, r *http.Request) {
-
-	http.Redirect(w, r, "/backups", http.StatusSeeOther)
-
-	go func() {
-
-		if s.bucket.projectID == "" || s.bucket.Name == "" {
+			WriteJSON(w, messageToJSON(http.StatusInternalServerError, "loading data from disk failed", nil))
 			return
 		}
 
-		backupsStringArr, err := GetAvailableBackups("backups/")
-		if err != nil {
-			log.Fatalln(err)
-		}
-
-		if err := s.bucket.CreateGCSBucket(); err != nil {
-			log.Println(err)
-			http.Redirect(w, r, "/backups", http.StatusInternalServerError)
-		}
-
-		// upload all files to cloud
-
-		if err := s.UploadDataToCloud(backupsStringArr); err != nil {
-			log.Fatalln(err)
-			http.Error(w, "Internal server error", http.StatusInternalServerError)
-		}
-
-		backupsInCloudStringArr, err := s.bucket.RetrieveObjectsInBucket(context.Background())
-		if err != nil {
-			log.Fatalln(err)
-			http.Error(w, "Internal server error", http.StatusInternalServerError)
-		}
-
-		// upload all files to disk
-		if err := s.DownloadDataFromCloud(backupsInCloudStringArr); err != nil {
-			log.Fatalln(err)
-			http.Error(w, "Internal server error", http.StatusInternalServerError)
-		}
-
-	}()
-
-}
-
-func (s *APIServer) LoginPage(w http.ResponseWriter, r *http.Request) {
-	// Check if the user already has a valid JWT token
-	cookie, err := r.Cookie("token")
-	if err == nil {
-		tokenString := cookie.Value
-		claims := &jwt.StandardClaims{}
-		token, err := jwt.ParseWithClaims(tokenString, claims, func(token *jwt.Token) (interface{}, error) {
-			return s.jwtSecret, nil
-		})
-
-		if err == nil && token.Valid {
-			// If the token is valid, redirect to the home page
-			http.Redirect(w, r, "/home", http.StatusSeeOther)
+		if _, err := s.containerService.Containerize(); err != nil {
+			WriteJSON(w, messageToJSON(http.StatusInternalServerError, "failed to start server", nil))
 			return
 		}
+		returnData = data
 	}
 
-	// If there's no valid token, show the login page
-	path := s.TemplatePath
-	t, err := template.ParseFiles(path + "login.html")
-	if err != nil {
-		log.Println(err)
-		http.Error(w, "Internal server error", http.StatusInternalServerError)
-		return
-	}
-	t.Execute(w, nil)
+	WriteJSON(w, messageToJSON(http.StatusOK, "loading data successful", returnData))
 }
 
-func (s *APIServer) Login(w http.ResponseWriter, r *http.Request) {
-	if r.Method == http.MethodGet {
-		s.LoginPage(w, r)
+// SyncHandler synchronizes data
+// @Summary Sync data
+// @Description Sync the latest data
+// @Tags backup
+// @Accept  json
+// @Produce  json
+// @Success 200 {object} JSONResponse
+// @Failure 500 {object} JSONResponse
+// @Router /sync [post]
+func (s *APIServer) SyncHandler(w http.ResponseWriter, r *http.Request) {
+
+	backupData, err := s.backupService.Sync()
+	if err != nil {
+		WriteJSON(w, messageToJSON(http.StatusInternalServerError, "error syncing data", nil))
+	}
+	WriteJSON(w, messageToJSON(http.StatusOK, "synced successfully", backupData))
+
+}
+
+// LoginHandler handles user login
+// @Summary Login
+// @Description Authenticates the user and returns a JWT token
+// @Tags auth
+// @Accept  json
+// @Produce  json
+// @Param credentials body map[string]string true "User credentials"
+// @Success 200 {object} JSONResponse
+// @Failure 400 {object} JSONResponse
+// @Failure 401 {object} JSONResponse
+// @Router /login [post]
+func (s *APIServer) LoginHandler(w http.ResponseWriter, r *http.Request) {
+	var credentials struct {
+		Username string `json:"username"`
+		Password string `json:"password"`
+	}
+
+	if err := json.NewDecoder(r.Body).Decode(&credentials); err != nil {
+		WriteJSON(w, messageToJSON(http.StatusBadRequest, "invalid request payload", nil))
 		return
 	}
 
-	username, password := r.FormValue("username"), r.FormValue("password")
+	// Extract the username and password
+	username := credentials.Username
+	password := credentials.Password
 
-	if username != os.Getenv("ADMIN_USER") || password != os.Getenv("ADMIN_PASSWORD") {
-		http.Error(w, "Invalid credentials", http.StatusUnauthorized)
+	if username == "" || password == "" {
+		WriteJSON(w, messageToJSON(http.StatusUnauthorized, "login information incomplete", nil))
 		return
 	}
 
-	expirationTime := time.Now().Add(24 * time.Hour)
-	claims := &jwt.StandardClaims{
-		ExpiresAt: expirationTime.Unix(),
-		Issuer:    username,
-	}
-
-	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
-	tokenString, err := token.SignedString(s.jwtSecret)
+	tokenString, expirationTime, err := s.loginService.Login(username, password)
 	if err != nil {
-		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
+		WriteJSON(w, messageToJSON(http.StatusUnauthorized, "unauthorized", nil))
 		return
 	}
 
-	http.SetCookie(w, &http.Cookie{
-		Name:     "token",
-		Value:    tokenString,
-		HttpOnly: true,
-		Expires:  expirationTime,
-	})
+	// Set the Authorization header in the response
+	w.Header().Set("Authorization", "Bearer "+*tokenString)
+	w.Header().Set("Content-Type", "application/json")
 
-	http.Redirect(w, r, "/home", http.StatusSeeOther)
+	response := map[string]interface{}{
+		"token":          *tokenString,
+		"expirationTime": expirationTime.Format(time.RFC3339),
+	}
+	// Return the token and expiration time in the response body
+	WriteJSON(w, messageToJSON(http.StatusOK, "authorized", response))
 }
 
-func (s *APIServer) JwtAuth(next http.Handler) http.Handler {
-
-	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		cookie, err := r.Cookie("token")
-		if err != nil {
-			if err == http.ErrNoCookie {
-				http.Error(w, "Forbidden", http.StatusForbidden)
-				return
-			}
-			http.Error(w, "Bad Request", http.StatusBadRequest)
-			return
-		}
-
-		tokenString := cookie.Value
-		claims := &jwt.StandardClaims{}
-		token, err := jwt.ParseWithClaims(tokenString, claims, func(token *jwt.Token) (interface{}, error) {
-			return s.jwtSecret, nil
-		})
-
-		if err != nil || !token.Valid {
-			http.Error(w, "forbidden", http.StatusForbidden)
-			return
-		}
-		next.ServeHTTP(w, r)
-	})
+// GetBackupHandler retrieves the list of available backups
+// @Summary Get backups
+// @Description Retrieves the list of available backups
+// @Tags backup
+// @Accept  json
+// @Produce  json
+// @Success 200 {object} JSONResponse
+// @Failure 500 {object} JSONResponse
+// @Router /backup [get]
+func (s *APIServer) GetBackupHandler(w http.ResponseWriter, r *http.Request) {
+	backups, err := s.backupService.GetBackups()
+	if err != nil {
+		WriteJSON(w, messageToJSON(http.StatusInternalServerError, "getting backups failed", nil))
+		return
+	}
+	response := map[string][]string{
+		"backups": backups,
+	}
+	WriteJSON(w, messageToJSON(http.StatusOK, "retrieved backups", response))
 }
 
-func (s *APIServer) Backup(w http.ResponseWriter, r *http.Request) {
-	backupName := r.FormValue("name")
+// BackupHandler creates a backup
+// @Summary Create a backup
+// @Description Creates a backup of the server
+// @Tags backup
+// @Accept  json
+// @Produce  json
+// @Param backup body map[string]string true "Backup information"
+// @Success 200 {object} JSONResponse
+// @Failure 500 {object} JSONResponse
+// @Router /backup [post]
+func (s *APIServer) BackupHandler(w http.ResponseWriter, r *http.Request) {
+	var backupFileName struct {
+		Backup string `json:"backup"`
+	}
+
+	// Decode JSON body to get the backup file name
+	if err := json.NewDecoder(r.Body).Decode(&backupFileName); err != nil {
+		WriteJSON(w, messageToJSON(http.StatusInternalServerError, err.Error(), nil))
+		return
+	}
+	backupName := backupFileName.Backup
 	if backupName == "" {
 		backupName = "server"
 	}
-	// Respond immediately
-	http.Redirect(w, r, "/backups", http.StatusSeeOther)
 
-	// Start the backup process in the background
-	go func() {
-		// Perform backup operation here
-		currentTime := time.Now()
-		formattedTime := currentTime.Format("20060102_150405")
-		fileName := fmt.Sprintf("%s_%s.zip", backupName, formattedTime)
-
-		if err := zipit("mcdata", "backups/"+fileName, false); err != nil {
-			log.Println("Error during backup:", err)
-		}
-		log.Println("Backup initiated successfully")
-	}()
-
+	backupData, err := s.backupService.Backup(backupName)
+	if err != nil {
+		WriteJSON(w, messageToJSON(http.StatusInternalServerError, err.Error(), nil))
+		return
+	}
+	WriteJSON(w, messageToJSON(http.StatusOK, "backup successful", backupData))
 }
 
-func (s *APIServer) DeleteBackup(w http.ResponseWriter, r *http.Request) {
+// DeleteBackupHandler deletes a backup
+// @Summary Delete a backup
+// @Description Deletes a specified backup
+// @Tags backup
+// @Accept  json
+// @Produce  json
+// @Param delete query string true "Name of the backup to delete"
+// @Success 200 {object} JSONResponse
+// @Failure 500 {object} JSONResponse
+// @Router /backup/delete [delete]
+func (s *APIServer) DeleteBackupHandler(w http.ResponseWriter, r *http.Request) {
 	backupToDelete := r.URL.Query().Get("delete")
-	removePath := fmt.Sprintf("backups/%s", backupToDelete)
-	if err := os.Remove(removePath); err != nil {
-		log.Fatalln(err)
-	}
-	log.Printf("backup %s deleted\n", backupToDelete)
 
-}
-func (s *APIServer) BackupPage(w http.ResponseWriter, r *http.Request) {
-	path := s.TemplatePath
-
-	t, err := template.ParseFiles(path + "backups.html")
-	if err != nil {
-		log.Println(err)
-	}
-
-	backupsStringArr, err := GetAvailableBackups("backups/")
-	if err != nil {
-		log.Fatalln(err)
-	}
-
-	cloudBackupsArr, err := s.bucket.RetrieveObjectsInBucket(context.Background())
-	if err != nil {
-		log.Fatalln("unable to download object data from cloud", err)
-	}
-
-	backups := BackupTemplateData{
-		Backups:      backupsStringArr,
-		CloudBackups: cloudBackupsArr,
-	}
-
-	t.Execute(w, backups)
-}
-
-func (s *APIServer) Logs(w http.ResponseWriter, r *http.Request) {
-	logsPath := s.LogsPath
-	logs, err := GetMcServerLogs(logsPath)
-	if err != nil {
-		log.Println(err)
-	}
-
-	s.WriteTemplate(w, logs, "logs.html")
-	log.Println("logs accessed")
-
-}
-
-func (s *APIServer) Home(w http.ResponseWriter, r *http.Request) {
-	options := []map[string]string{
-		{
-			"OptionName":  "Start Server",
-			"Description": "You can start a Minecraft Server, starting consists of creating a container in a network through Docker Engine API and initializing all needed components for the server to function properly.",
-			"APIEndpoint": "/start",
-			"Action":      "Start Server",
-			"Method":      "post",
-		},
-		{
-			"OptionName":  "Stop Server",
-			"Description": "Stopping a server removes a container and gets rid of the temporary network created while starting. Only the data created by a server (your world save) is persisted within a project directory.",
-			"APIEndpoint": "/stop",
-			"Action":      "Stop Server",
-			"Method":      "post",
-		},
-		{
-			"OptionName":  "View Logs",
-			"Description": "Log Viewer helps you browse your server's startup logs. Options to refresh page, scroll down to bottom and top are implemented.",
-			"APIEndpoint": "/logs",
-			"Action":      "Go to Log Navigator",
-			"Method":      "get",
-		},
-		{
-			"OptionName":  "Backup Server",
-			"Description": "Your server can be easily backed up if you need to. There is an option to also persist your backups in a Google Cloud Storage Bucket via \"Synchronize with Cloud\" option (keep in mind that you have to configure GCP on your own).",
-			"APIEndpoint": "/backups",
-			"Action":      "Go to Backup Manager",
-			"Method":      "get",
-		},
-	}
-
-	data := map[string]interface{}{
-		"Title":   "Minecraft Server Management",
-		"Options": options,
-	}
-
-	if err := s.WriteTemplate(w, data, "home.html"); err != nil {
-		log.Printf("Error rendering home template: %v", err)
-		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
+	if fileExists, _ := exists(fmt.Sprintf("%s/%s", s.backupService.backupPath, backupToDelete)); !fileExists {
+		WriteJSON(w, messageToJSON(http.StatusInternalServerError, "backup file does not exist", nil))
 		return
 	}
 
-	log.Println("Home page accessed")
-}
-func (s *APIServer) Stop(w http.ResponseWriter, r *http.Request) {
-	// s.WriteTemplate(w, "home.html", nil)
-	http.Redirect(w, r, "/home", http.StatusSeeOther)
-
-	go func() {
-		s.Runner.StopContainer()
-	}()
-	// WriteJSON(w, http.StatusOK, "Stop container accessed")
-}
-
-func (s *APIServer) Start(w http.ResponseWriter, r *http.Request) {
-	// s.WriteTemplate(w, "home.html", nil)
-	http.Redirect(w, r, "/home", http.StatusSeeOther)
-
-	go func() {
-		s.Runner.Containerize()
-	}()
-	// WriteJSON(w, http.StatusOK, "Start container accessed")
-	log.Println("container accessed")
-}
-
-func WriteJSON(w http.ResponseWriter, status int, v any) {
-	w.WriteHeader(status)
-	w.Header().Add("Content-Type", "application/json")
-	fmt.Printf("%v Request Status: %d \n", time.Now().UTC(), status)
-	w.Write([]byte(fmt.Sprintf("Status: %v", status)))
-}
-
-func (s *APIServer) WriteTemplate2(w http.ResponseWriter, site string, v any) {
-
-	templatePath := s.TemplatePath
-
-	t, err := template.ParseFiles(templatePath + site)
+	fileSize, err := getFileSize(fmt.Sprintf("%s/%s", s.backupService.backupPath, backupToDelete))
 	if err != nil {
-		fmt.Println("error in home template")
-		panic(err)
+		log.Println(err)
+		WriteJSON(w, messageToJSON(http.StatusInternalServerError, "failed getting file size", nil))
+		return
 	}
 
-	t.Execute(w, v)
+	start := time.Now()
+	removePath := fmt.Sprintf("%s/%s", s.backupService.backupPath, backupToDelete)
+	if err := os.Remove(removePath); err != nil {
+		log.Println(err)
+		WriteJSON(w, messageToJSON(http.StatusInternalServerError, "failed removing backup file", nil))
+		return
+	}
+
+	deleteTime := time.Since(start)
+	uploadTime := time.Duration(0)
+	fileSizeFloat := float64(fileSize)
+
+	backupData := NewBackupData(&Bucket{}, backupToDelete, fileSizeFloat, &deleteTime, &uploadTime, &start)
+
+	WriteJSON(w, messageToJSON(http.StatusOK, fmt.Sprintf("backup %s deleted", backupToDelete), backupData))
+}
+
+// LogsHandler retrieves server logs
+// @Summary Get logs
+// @Description Retrieves the server logs
+// @Tags logs
+// @Accept  json
+// @Produce  json
+// @Success 200 {object} JSONResponse
+// @Failure 500 {object} JSONResponse
+// @Router /logs [get]
+func (s *APIServer) LogsHandler(w http.ResponseWriter, r *http.Request) {
+	logsPath := s.LogsPath
+	logs, err := GetMcServerLogs(logsPath)
+	if err != nil {
+		resp := map[string]string{
+			"logs": "error reading logs",
+		}
+		WriteJSON(w, messageToJSON(http.StatusInternalServerError, "error reading logs", resp))
+		return
+	}
+
+	resp := map[string][]string{
+		"logs": logs,
+	}
+
+	WriteJSON(w, messageToJSON(http.StatusOK, "logs retrieved", resp))
 
 }
 
-func (s *APIServer) WriteTemplate(w http.ResponseWriter, v any, site ...string) error {
-	var templates []string
-	for _, t := range site {
-		templates = append(templates, filepath.Join(s.TemplatePath, t))
-	}
+// StopHandler stops the server
+// @Summary Stop server
+// @Description Stops the server container
+// @Tags server
+// @Accept  json
+// @Produce  json
+// @Success 200 {object} JSONResponse
+// @Failure 500 {object} JSONResponse
+// @Router /stop [post]
+func (s *APIServer) StopHandler(w http.ResponseWriter, r *http.Request) {
 
-	// Print out the final template paths (for debugging)
-	fmt.Println("Loading templates:", templates)
-
-	t, err := template.ParseFiles(templates...)
+	data, err := s.containerService.StopContainer()
 	if err != nil {
-		log.Printf("Template parsing error: %v", err)
-		return err
+		WriteJSON(w, messageToJSON(http.StatusInternalServerError, "internal server error", nil))
+		return
 	}
 
-	if err := t.Execute(w, v); err != nil {
-		log.Printf("Template execution error: %v", err)
-		return err
+	WriteJSON(w, messageToJSON(http.StatusOK, "server stopped", data))
+}
+
+// StartHandler starts the server
+// @Summary Start server
+// @Description Starts the server container
+// @Tags server
+// @Accept  json
+// @Produce  json
+// @Success 200 {object} JSONResponse
+// @Failure 500 {object} JSONResponse
+// @Router /start [post]
+func (s *APIServer) StartHandler(w http.ResponseWriter, r *http.Request) {
+
+	data, err := s.containerService.Containerize()
+	if err != nil {
+		WriteJSON(w, messageToJSON(http.StatusInternalServerError, "internal server error", data))
+		return
 	}
 
-	return nil
+	WriteJSON(w, messageToJSON(http.StatusOK, "server started", data))
+
 }
